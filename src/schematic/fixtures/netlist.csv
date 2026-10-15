@@ -1,0 +1,15 @@
+net,reference,pad,value
+GND,C10,2,100n
+VIN,C10,1,100n
+GND,C2,2,"1u ""big"""
+VIN,C2,1,"1u ""big"""
+GND,J1,1,CONN
+SDA,J1,3,CONN
+SCL,J1,2,CONN
+VIN,J1,10,CONN
+GND,U1,EP,LDO
+VIN,U1,1,LDO
+OUT,U1,2,LDO
+GND,U1,3,LDO
+OUT,R9,1,4.7k
+SDA,R9,2,4.7k

@@ -1,0 +1,34 @@
+[package]
+name = "build-a-board"
+version = "0.2.0"
+edition = "2024"
+description = "Describe KiCad boards in Starlark and build, route, check, and release them"
+
+[[bin]]
+name = "bb"
+path = "src/main.rs"
+
+[dependencies]
+allocative = "0.3"
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+clap = { version = "4.6", features = ["derive", "env"] }
+csv = "1.3"
+png = "0.18"
+regex = "1.11"
+roxmltree = "0.20"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+starlark = "0.14"
+tempfile = "3"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "v5"] }
+wait-timeout = "0.2"
+walkdir = "2.5"
+which = "7"
+# Release zips are deflated by zlib itself, byte-identical to Python's zipfile.
+zip = { version = "2", default-features = false, features = ["deflate-zlib"] }
+
+[build-dependencies]
+cc = "1"

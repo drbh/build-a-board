@@ -1,0 +1,62 @@
+(session fixture
+  (base_design fixture)
+  (placement
+    (resolution um 10)
+    (component PinHeader_2x05_P2.54mm_Vertical
+      (place J9 425735 -520955 front 180)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution um 10)
+    (parser
+      (host_cad "KiCad's Pcbnew")
+      (host_version 10.0.5)
+    )
+    (library_out 
+      (padstack "Via[0-1]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-1]_800:400_um"
+        (shape
+          (circle F.Cu 8000 0 0)
+        )
+        (shape
+          (circle B.Cu 8000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net VBAT
+        (wire
+          (path F.Cu 15000
+            500000 -750000
+            520000 -750000
+            530000 -760123
+          )
+        )
+        (via "Via[0-1]_600:300_um" 530000 -760123
+        )
+      )
+      (net M1_L
+        (wire
+          (path B.Cu 5000
+            240000 -740000
+            250000 -740000
+          )
+          (type fix)
+        )
+        (via "Via[0-1]_800:400_um" 250000 -740000
+        )
+      )
+    )
+  )
+)
