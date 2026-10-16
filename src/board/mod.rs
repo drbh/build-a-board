@@ -36,12 +36,6 @@ pub struct Project {
     pub gerber_layers: String,
     /// Reference prefixes that never appear in the BOM (holes, logos, ...).
     pub unsourced: Vec<String>,
-    /// External gate scripts: `<repo>/<name>/<name>.py --json <repo>/<name>/report.json`.
-    pub checks: Vec<String>,
-    /// The gate re-run with `--release` once the release exists.
-    pub release_check: Option<String>,
-    /// Repository-relative JSON with `manufacturing.cpl_rotation_offsets_deg`.
-    pub contract: Option<String>,
     /// Board-directory files shipped in the complete release archive.
     pub release_files: Vec<String>,
     /// Where the KiCad project lives, relative to the board directory.

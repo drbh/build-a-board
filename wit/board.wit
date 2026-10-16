@@ -69,6 +69,9 @@ interface types {
         /// Pad number to net.
         pins: list<tuple<string, string>>,
         models: models,
+        /// Degrees added to this part's rotation in JLCPCB's placement file,
+        /// where its package orientation differs from KiCad's.
+        assembly-rotation: f64,
     }
 
     enum pad-shape {
@@ -106,6 +109,9 @@ interface types {
         body: option<point>,
         graphics: list<fp-line>,
         models: list<model>,
+        /// Degrees added to this part's rotation in JLCPCB's placement file,
+        /// where its package orientation differs from KiCad's.
+        assembly-rotation: f64,
     }
 
     variant footprint {
@@ -254,9 +260,6 @@ interface types {
         order-quantity: u32,
         gerber-layers: string,
         unsourced: option<list<string>>,
-        checks: list<string>,
-        release-check: option<string>,
-        contract: option<string>,
         release-files: list<string>,
         kicad-dir: string,
         schematic: schematic,

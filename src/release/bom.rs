@@ -6,7 +6,6 @@ use std::sync::LazyLock;
 
 use anyhow::{Context, Result, anyhow, bail};
 use regex::Regex;
-use serde_json::Value;
 
 use crate::board::Project;
 
@@ -205,16 +204,10 @@ fn modulo_360(degrees: f64) -> f64 {
 }
 
 /// JLCPCB's CPL from KiCad's position file: centroids in the same negative-Y
-/// frame as the Gerbers, with per-reference rotation corrections.
-pub fn export_cpl(table: &Table, positions: &Path, contract: Option<&Path>, cpl: &Path) -> Result<()> {
-    let contract: Value = match contract {
-        Some(path) => serde_json::from_str(
-            &std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?,
-        )?,
-        None => Value::Null,
-    };
-    let offsets = contract.pointer("/manufacturing/cpl_rotation_offsets_deg");
-    let offset = |reference: &str| offsets.and_then(|o| o.get(reference)).and_then(Value::as_f64).unwrap_or(0.0);
+/// frame as the Gerbers, rotations corrected per part (`offsets`, degrees)
+/// where JLC's library orients a package differently from KiCad's.
+pub fn export_cpl(table: &Table, positions: &Path, offsets: &HashMap<&str, f64>, cpl: &Path) -> Result<()> {
+    let offset = |reference: &str| offsets.get(reference).copied().unwrap_or(0.0);
 
     let mut smt = HashSet::new();
     for part in &table.rows {
@@ -248,4 +241,32 @@ pub fn export_cpl(table: &Table, positions: &Path, contract: Option<&Path>, cpl:
     }
     println!("JLCPCB CPL validated: {} centroids in Gerber coordinates", rows.len());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_cpl_applies_each_parts_assembly_rotation() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let parts = dir.path().join("parts.csv");
+        std::fs::write(&parts, "refs,assembly\nU1 R1,SMT\nJ1,THT\n")?;
+        let positions = dir.path().join("pos.csv");
+        std::fs::write(
+            &positions,
+            "Ref,Val,Package,PosX,PosY,Rot,Side\n\
+             U1,AP64352,SO-8EP,10,-20,0,top\n\
+             R1,10k,0603,12,-20,0,top\n\
+             J1,HDR,PinHeader,30,-20,0,top\n",
+        )?;
+        let cpl = dir.path().join("cpl.csv");
+        export_cpl(&Table::read(&parts)?, &positions, &HashMap::from([("U1", 270.0)]), &cpl)?;
+        let text = std::fs::read_to_string(&cpl)?;
+        // U1 turns by its offset; R1 keeps its rotation; J1 is hand-soldered.
+        assert!(text.contains("U1,10.0000,-20.0000,270.00,Top"), "{text}");
+        assert!(text.contains("R1,12.0000,-20.0000,0.00,Top"), "{text}");
+        assert!(!text.contains("J1"), "{text}");
+        Ok(())
+    }
 }

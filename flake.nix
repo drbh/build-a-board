@@ -56,7 +56,7 @@
                 --set-default FREEROUTING_JAR ${freerouting} \
                 --set-default JAVA ${jdk}/bin/java \
                 --set-default MAGICK ${pkgs.imagemagick}/bin/magick \
-                --set-default BB_PYTHON ${pkgs.python3}/bin/python3 ${pkgs.lib.optionalString linux ''\
+                ${pkgs.lib.optionalString linux ''\
                 --set-default KICAD_CLI ${pkgs.kicad}/bin/kicad-cli \
                 --set-default KICAD_FOOTPRINT_DIR ${pkgs.kicad.libraries.footprints}/share/kicad/footprints''}
             '';
@@ -80,8 +80,6 @@
               pkgs.zlib
               jdk
               pkgs.imagemagick
-              # Only for a board project's own external check scripts.
-              pkgs.python3
               pkgs.git
             ]
             # nixpkgs marks KiCad broken on Darwin, so macOS keeps using
@@ -92,7 +90,6 @@
             FREEROUTING_JAR = "${p.freerouting}";
             JAVA = "${jdk}/bin/java";
             MAGICK = "${pkgs.imagemagick}/bin/magick";
-            BB_PYTHON = "${pkgs.python3}/bin/python3";
 
             shellHook = pkgs.lib.optionalString linux ''
               export KICAD_CLI=${pkgs.kicad}/bin/kicad-cli

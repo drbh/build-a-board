@@ -198,7 +198,7 @@ impl Collector<'_> {
             wit::Shape::Placement(p) => {
                 let (x, y) = frame.apply(&p.at);
                 let angle = frame.angle + p.rotate;
-                let (reference, value, source) = match &p.footprint {
+                let (reference, value, source, assembly_rotation) = match &p.footprint {
                     wit::Footprint::Library(part) => {
                         let (library, name) = lib_id(&part.footprint)?;
                         self.libraries.load(&library, &name)?;
@@ -212,9 +212,12 @@ impl Collector<'_> {
                             &part.reference,
                             &part.value,
                             Source::Library(LibraryFootprint { library, name, pins, models }),
+                            part.assembly_rotation,
                         )
                     }
-                    wit::Footprint::Generated(g) => (&g.reference, &g.value, Source::Generated(generated(g, (x, y))?)),
+                    wit::Footprint::Generated(g) => {
+                        (&g.reference, &g.value, Source::Generated(generated(g, (x, y))?), g.assembly_rotation)
+                    }
                 };
                 self.board.footprints.push(Footprint {
                     hide_reference: self.hidden(p.hide_reference, reference),
@@ -222,6 +225,7 @@ impl Collector<'_> {
                     value: value.clone(),
                     at: Pt::mm(x, y),
                     angle,
+                    assembly_rotation,
                     source,
                 });
             }
@@ -400,9 +404,6 @@ fn project(p: wit::Project) -> Project {
         order_quantity: p.order_quantity,
         gerber_layers: p.gerber_layers,
         unsourced: p.unsourced.unwrap_or_else(|| ["H", "LOGO", "TP", "FID"].map(String::from).into()),
-        checks: p.checks,
-        release_check: p.release_check,
-        contract: p.contract,
         release_files: p.release_files,
         kicad_dir: p.kicad_dir,
         copper_weight_oz: p.copper_weight_oz,

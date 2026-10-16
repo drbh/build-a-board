@@ -1,5 +1,6 @@
 //! The `bb` workflow: generate, route, check, render, and release a board.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -297,18 +298,6 @@ fn export_boms(ctx: &Ctx, rows: &Table) -> Result<()> {
     )
 }
 
-fn extended_checks(ctx: &Ctx, names: &[String], release: bool) -> Result<()> {
-    for name in names {
-        let dir = ctx.repo.join(name);
-        let mut cmd = Cmd::new(&ctx.tools.python).arg(dir.join(format!("{name}.py")));
-        if release {
-            cmd = cmd.arg("--release");
-        }
-        cmd.arg("--json").arg(dir.join("report.json")).cwd(&ctx.dir).run()?;
-    }
-    Ok(())
-}
-
 fn assembly(ctx: &Ctx, rows: &Table) -> Result<()> {
     let positions = ctx.output_file("assembly", "-position.csv")?;
     ctx.kicad(["pcb", "export", "pos", "--output"])?
@@ -316,15 +305,15 @@ fn assembly(ctx: &Ctx, rows: &Table) -> Result<()> {
         .args(["--format", "csv", "--units", "mm", "--side", "both"])
         .arg(&ctx.pcb)
         .run()?;
-    let contract = ctx.board.project.contract.as_ref().map(|c| ctx.repo.join(c));
-    bom::export_cpl(rows, &positions, contract.as_deref(), &ctx.artifact("assembly", "-cpl.csv"))
+    let offsets: HashMap<&str, f64> =
+        ctx.board.design.footprints.iter().map(|fp| (fp.reference.as_str(), fp.assembly_rotation)).collect();
+    bom::export_cpl(rows, &positions, &offsets, &ctx.artifact("assembly", "-cpl.csv"))
 }
 
 pub fn check(ctx: &Ctx) -> Result<()> {
     let rows = core_checks(ctx)?;
     export_boms(ctx, &rows)?;
-    assembly(ctx, &rows)?;
-    extended_checks(ctx, &ctx.board.project.checks, false)
+    assembly(ctx, &rows)
 }
 
 fn schematic_image(ctx: &Ctx, target: &Path) -> Result<()> {
@@ -543,14 +532,10 @@ pub fn prep(ctx: &Ctx) -> Result<()> {
     let rows = core_checks(ctx)?;
     export_boms(ctx, &rows)?;
     assembly(ctx, &rows)?;
-    extended_checks(ctx, &ctx.board.project.checks, false)?;
     schematic_image(ctx, &ctx.artifact("render", ""))?;
     fabrication(ctx)?;
     render(ctx, true)?;
     packages(ctx, true)?;
-    if let Some(check) = &ctx.board.project.release_check {
-        extended_checks(ctx, std::slice::from_ref(check), true)?;
-    }
     println!("Manufacturing outputs ready in {}", ctx.out.display());
     Ok(())
 }

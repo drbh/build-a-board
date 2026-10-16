@@ -147,8 +147,6 @@ pub struct Tools {
     pub java: PathBuf,
     pub magick: PathBuf,
     pub freerouting: PathBuf,
-    /// Interpreter for the board project's external check scripts.
-    pub python: PathBuf,
 }
 
 fn env_path(name: &str) -> Option<PathBuf> {
@@ -185,7 +183,6 @@ impl Tools {
             java,
             magick: env_path("MAGICK").or_else(|| on_path("magick")).unwrap_or_else(|| "magick".into()),
             freerouting,
-            python: env_path("BB_PYTHON").or_else(|| on_path("python3")).unwrap_or_else(|| "python3".into()),
         }
     }
 
@@ -206,7 +203,6 @@ impl Tools {
             ("java", &self.java, exists(&self.java)),
             ("FreeRouting", &self.freerouting, self.freerouting.is_file()),
             ("ImageMagick", &self.magick, exists(&self.magick)),
-            ("python3", &self.python, exists(&self.python)),
         ]
     }
 }

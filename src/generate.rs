@@ -84,6 +84,7 @@ fn trace(art: &Artwork) -> Result<Footprint> {
         at: origin,
         angle: 0.0,
         hide_reference: true,
+        assembly_rotation: 0.0,
         source: Source::Generated(GeneratedFootprint {
             library: art.library.clone(),
             name: art.name.clone(),

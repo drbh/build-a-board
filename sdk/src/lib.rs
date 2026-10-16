@@ -208,6 +208,7 @@ pub struct Part {
     pub footprint: String,
     pub pins: Vec<(String, String)>,
     pub models: Models,
+    pub assembly_rotation: f64,
 }
 
 /// A stock library footprint, written `Library:Name`.
@@ -218,10 +219,18 @@ pub fn part(reference: &str, value: impl Into<String>, footprint: &str) -> Part 
         footprint: footprint.to_owned(),
         pins: Vec::new(),
         models: Models::Keep,
+        assembly_rotation: 0.0,
     }
 }
 
 impl Part {
+    /// Degrees added to this part's rotation in JLCPCB's placement (CPL)
+    /// file, for packages JLC's library orients differently from KiCad's.
+    pub fn assembly_rotation(mut self, degrees: impl Into<f64>) -> Self {
+        self.assembly_rotation = degrees.into();
+        self
+    }
+
     /// Pad number → net; `NC` pins are left out.
     pub fn pins<A: Display>(mut self, pins: impl IntoIterator<Item = (A, Net)>) -> Self {
         self.pins.extend(
@@ -305,6 +314,7 @@ pub struct Generated {
     pub body: Option<Point>,
     pub graphics: Vec<FpLine>,
     pub models: Vec<Model>,
+    pub assembly_rotation: f64,
 }
 
 pub fn generated(reference: &str, value: impl Into<String>, footprint: impl Into<String>) -> Generated {
@@ -316,10 +326,18 @@ pub fn generated(reference: &str, value: impl Into<String>, footprint: impl Into
         body: None,
         graphics: Vec::new(),
         models: Vec::new(),
+        assembly_rotation: 0.0,
     }
 }
 
 impl Generated {
+    /// Degrees added to this part's rotation in JLCPCB's placement (CPL)
+    /// file, for packages JLC's library orients differently from KiCad's.
+    pub fn assembly_rotation(mut self, degrees: impl Into<f64>) -> Self {
+        self.assembly_rotation = degrees.into();
+        self
+    }
+
     pub fn pads(mut self, pads: impl IntoIterator<Item = Pad>) -> Self {
         self.pads.extend(pads);
         self
@@ -847,9 +865,6 @@ pub struct Project {
     pub order_quantity: u32,
     pub gerber_layers: String,
     pub unsourced: Option<Vec<String>>,
-    pub checks: Vec<String>,
-    pub release_check: Option<String>,
-    pub contract: Option<String>,
     pub release_files: Vec<String>,
     pub kicad_dir: String,
     pub schematic: Schematic,
@@ -866,9 +881,6 @@ impl Project {
             order_quantity: 1,
             gerber_layers: "F.Cu,B.Cu,F.Mask,B.Mask,F.Silkscreen,B.Silkscreen,Edge.Cuts".into(),
             unsourced: None,
-            checks: Vec::new(),
-            release_check: None,
-            contract: None,
             release_files: Vec::new(),
             kicad_dir: "output".into(),
             schematic: Schematic::default(),
@@ -884,21 +896,6 @@ impl Project {
 
     pub fn order_quantity(mut self, boards: u32) -> Self {
         self.order_quantity = boards;
-        self
-    }
-
-    pub fn checks<S: Display>(mut self, checks: impl IntoIterator<Item = S>) -> Self {
-        self.checks = checks.into_iter().map(|c| c.to_string()).collect();
-        self
-    }
-
-    pub fn release_check(mut self, check: &str) -> Self {
-        self.release_check = Some(check.to_owned());
-        self
-    }
-
-    pub fn contract(mut self, path: &str) -> Self {
-        self.contract = Some(path.to_owned());
         self
     }
 

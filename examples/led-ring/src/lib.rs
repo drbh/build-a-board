@@ -51,6 +51,8 @@ fn bearing(i: f64) -> f64 {
 pub struct Pixel {
     pub led: Placed<Ws2812b>,
     pub cap: Placed<Capacitor>,
+    /// Degrees counter-clockwise from +X, seen from the ring's centre.
+    pub bearing: f64,
 }
 
 /// The ring.
@@ -76,6 +78,7 @@ impl Ring {
                         .rated(v(16))
                         .place(&format!("C{n}"), polar(CENTER, CAP_RADIUS, angle))
                         .rotate(tangent),
+                    bearing: angle,
                 }
             })
             .collect();
@@ -90,7 +93,17 @@ impl Ring {
 
 impl Module for Ring {
     fn layout(&self) -> Group {
-        group(self.pixels.iter().map(|p| items![&p.led, &p.cap]).collect::<Vec<_>>()).name("ring")
+        let pixels = self.pixels.iter().map(|p| {
+            // Each capacitor's ground drops straight to the back plane through
+            // its own via, just inside the ring, so its return never depends
+            // on the autorouter.
+            let (s, c) = p.bearing.to_radians().sin_cos();
+            let inward = (-1.2 * c, 1.2 * s);
+            let ground =
+                route(GND).width(0.4).via_size(0.6, 0.3).to(p.cap.p2()).to(p.cap.p2() + inward).via(Layer::BCu);
+            items![&p.led, &p.cap, ground]
+        });
+        group(pixels.collect::<Vec<_>>()).name("ring")
     }
 }
 

@@ -106,9 +106,6 @@ fn design(no_connect: &[&str], items: Vec<wit::Item>) -> wit::Design {
             order_quantity: 1,
             gerber_layers: String::new(),
             unsourced: None,
-            checks: vec![],
-            release_check: None,
-            contract: None,
             release_files: vec![],
             kicad_dir: "output".into(),
             schematic: wit::Schematic { title: None, company: None, revision: None, comment: None, library: None },
@@ -143,6 +140,7 @@ fn resistor(reference: &str, pins: &[(&str, &str)]) -> wit::Shape {
             footprint: "Test:R_Test".into(),
             pins: pins.iter().map(|(p, n)| (p.to_string(), n.to_string())).collect(),
             models: wit::Models::Keep,
+            assembly_rotation: 0.0,
         }),
         at: wit::Point { x: 0.0, y: 0.0 },
         rotate: 0.0,
@@ -255,6 +253,11 @@ fn balance_bot_example_builds() {
     assert!(board.warnings.is_empty(), "{:?}", board.warnings);
     assert!(board.artwork.iter().all(|art| art.image.is_file()));
     assert!(example.join(&board.project.bom).is_file());
+    // The regulators' pick-and-place correction reaches bb from the part type.
+    for reference in ["U1", "U2"] {
+        assert_eq!(board.design.footprint(reference).unwrap().assembly_rotation, 270.0, "{reference}");
+    }
+    assert_eq!(board.design.footprint("R1").unwrap().assembly_rotation, 0.0);
 }
 
 /// The small examples resolve without netlist warnings; the buck converter

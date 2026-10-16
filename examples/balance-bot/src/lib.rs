@@ -198,9 +198,6 @@ fn project() -> Project {
             ("BXJ25V470M10*10 10.0TP", "C3002464"),
         ])
         .order_quantity(5)
-        .checks(["pincheck", "simcheck", "boardcheck", "jlccheck"])
-        .release_check("boardcheck")
-        .contract("boardcheck/contract.json")
         .release_files([
             "Cargo.toml",
             "Cargo.lock",
@@ -283,5 +280,90 @@ mod tests {
     #[test]
     fn the_board_builds() {
         assert_eq!(kept(&build().items), 4);
+    }
+
+    /// Every placed footprint, at any depth.
+    fn placements(items: &[Item]) -> Vec<&Footprint> {
+        items
+            .iter()
+            .flat_map(|item| match item {
+                Item::Placement(p) => vec![&p.footprint],
+                Item::Group(g) => placements(&g.items),
+                _ => Vec::new(),
+            })
+            .collect()
+    }
+
+    fn reference(footprint: &Footprint) -> &str {
+        match footprint {
+            Footprint::Library(p) => &p.reference,
+            Footprint::Generated(g) => &g.reference,
+        }
+    }
+
+    /// The highest voltage a rail sees: a full 4S pack on the battery side.
+    fn rail_max(net: Net) -> Option<f64> {
+        [(VBAT_RAW, 16.8), (VBAT, 16.8), (V6, 6.0), (V5, 5.0), (V3_3, 3.3)]
+            .into_iter()
+            .find_map(|(rail, max)| (rail == net).then_some(max))
+    }
+
+    #[test]
+    fn capacitors_are_rated_with_margin() {
+        // Ceramics lose capacitance under bias, electrolytics age with
+        // voltage stress: 25% headroom on the battery side, 2x on regulated
+        // rails.
+        let board = Devboard::new();
+        let mut checked = 0;
+        let mut check = |net: Net, rating: Volts, name: &str| {
+            if let Some(max) = rail_max(net) {
+                let margin = if max > 6.0 { 1.25 } else { 2.0 };
+                assert!(rating.0 >= max * margin, "{name} is rated {rating:?} on {net} ({max} V max)");
+                checked += 1;
+            }
+        };
+        let servo = &board.servo_buck;
+        let control = &board.control_buck;
+        for c in servo.input.iter().chain(&control.input).chain(&servo.output).chain(&control.output) {
+            check(c.part.nets.p1, c.part.rating.expect("ceramics are rated"), c.reference().name());
+        }
+        for c in std::iter::once(&board.power.battery_bulk).chain(&board.power.servo_bulk) {
+            check(c.part.nets.positive, c.part.rating, c.reference().name());
+        }
+        assert_eq!(checked, 13);
+    }
+
+    #[test]
+    fn every_supply_rail_can_be_probed() {
+        let board = Devboard::new();
+        let p = &board.probes;
+        let probed: Vec<Net> = [&p.v5, &p.gnd, &p.raw, &p.battery, &p.v3_3, &p.v6_source, &p.v6_load]
+            .iter()
+            .map(|probe| probe.pad.part.point)
+            .collect();
+        for rail in [VBAT_RAW, VBAT, V6, V5, V3_3, GND] {
+            assert!(probed.contains(&rail), "no test point on {rail}");
+        }
+    }
+
+    #[test]
+    fn three_fiducials_for_assembly() {
+        let board = build();
+        let fiducials = placements(&board.items).into_iter().filter(|f| reference(f).starts_with("FID")).count();
+        assert_eq!(fiducials, 3);
+    }
+
+    #[test]
+    fn regulators_are_rotated_for_jlc_placement() {
+        // The reviewed release corrects U1/U2 by 270° in the CPL; losing it
+        // silently rotates both regulators on the assembled board.
+        let board = build();
+        for footprint in placements(&board.items) {
+            if let Footprint::Library(part) = footprint
+                && part.value == "AP64352SP-13"
+            {
+                assert_eq!(part.assembly_rotation, 270.0, "{}", part.reference);
+            }
+        }
     }
 }

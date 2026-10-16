@@ -45,6 +45,9 @@ impl Component for Ap64352 {
         part(reference, "AP64352SP-13", "Package_SO:Diodes_SO-8EP")
             .pins(self.pads())
             .swap_model(format!("{MODELS}/Package_SO.3dshapes/SO-8_3.9x4.9mm_P1.27mm.step"))
+            // JLCPCB's library turns this package 270° from KiCad's; without the
+            // correction its pick-and-place file rotates U1/U2 wrongly.
+            .assembly_rotation(270)
             .into()
     }
 }

@@ -204,7 +204,7 @@ Mistakes surface in three places:
 | `component.place(ref, at).rotate(deg).hide_reference()` | A `Placed` handle: an item, plus its pins (`.p1()`, `.on(net)`, `.pad(n)`, `.vbus().pad("B9")`) |
 | `impl Module { fn layout(&self) -> Group }`, `.at(x, y)` | A block in its own frame |
 | `Board::new(project).rules().netclasses().no_connect().severities().hide_references().finish().unlink_after_route().items()` | The board `build()` returns |
-| `Project::new(name)` + `.lcsc() .order_quantity() .checks() .release_files() .schematic() .decisions() .kicad_dir() …` | Release settings |
+| `Project::new(name)` + `.lcsc() .order_quantity() .release_files() .schematic() .decisions() .kicad_dir() …` | Release settings |
 | `group(items).at().rotate().name()` | A frame: contents are laid out relative to it and move with it; groups nest |
 | `part(ref, value, footprint)`, `generated(...)` with `smd`, `tht`, `fp_line`, `model` | Raw footprints, for `Component` impls |
 | `at(x, y)`, `u1.sw()`, `u1.sw() + (dx, dy)` | Anchors: a point in the current frame, a pad, or a point beside a pad |
@@ -295,8 +295,7 @@ Everything that used to need KiCad's Python (`pcbnew`) is native Rust:
 External tools: `cargo` with the `wasm32-wasip2` target
 (`rustup target add wasm32-wasip2`), `kicad-cli` (fill, DRC/ERC, Gerbers, renders), Java with
 FreeRouting, and ImageMagick. `bb doctor` checks them. Overrides:
-`KICAD_CLI`, `KICAD_FOOTPRINT_DIR`, `JAVA`, `FREEROUTING_JAR`, `MAGICK`,
-`BB_PYTHON` (for a project's own check scripts).
+`KICAD_CLI`, `KICAD_FOOTPRINT_DIR`, `JAVA`, `FREEROUTING_JAR`, `MAGICK`.
 
 ## Nix
 

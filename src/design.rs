@@ -142,6 +142,8 @@ pub struct Footprint {
     /// Orientation in degrees, counter-clockwise on screen.
     pub angle: f64,
     pub hide_reference: bool,
+    /// Degrees added to the rotation in JLCPCB's placement file.
+    pub assembly_rotation: f64,
     pub source: Source,
 }
 

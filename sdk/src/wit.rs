@@ -64,6 +64,7 @@ fn footprint(footprint: Footprint) -> w::Footprint {
                 Models::Swap(path) => w::Models::Swap(path),
                 Models::Replace(models) => w::Models::Replace(models.iter().map(model).collect()),
             },
+            assembly_rotation: p.assembly_rotation,
         }),
         Footprint::Generated(g) => w::Footprint::Generated(w::Generated {
             reference: g.reference,
@@ -98,6 +99,7 @@ fn footprint(footprint: Footprint) -> w::Footprint {
                 })
                 .collect(),
             models: g.models.iter().map(model).collect(),
+            assembly_rotation: g.assembly_rotation,
         }),
     }
 }
@@ -218,9 +220,6 @@ pub fn to_wit(board: Board) -> w::Design {
             order_quantity: p.order_quantity,
             gerber_layers: p.gerber_layers,
             unsourced: p.unsourced,
-            checks: p.checks,
-            release_check: p.release_check,
-            contract: p.contract,
             release_files: p.release_files,
             kicad_dir: p.kicad_dir,
             schematic: w::Schematic {
