@@ -1,9 +1,10 @@
-//! Refuse to build with bindings generated from a different `wit/`.
+//! Refuse to build with code generated from a different `wit/`.
 //!
-//! `src/bindings.rs` is generated ahead of time (see `sdk/bindgen`) and
-//! records a hash of the WIT it came from. This recomputes the hash, with the
-//! same FNV-1a as `bb_sdk_bindgen::wit_hash`, so an edited WIT without
-//! regenerated bindings is a build error rather than silent drift.
+//! `src/bindings.rs` and `src/design_json.rs` are generated ahead of time
+//! (see `sdk/bindgen`) and each records a hash of the WIT it came from. This
+//! recomputes the hash, with the same FNV-1a as `bb_sdk_bindgen::wit_hash`,
+//! so an edited WIT without regenerated code is a build error rather than
+//! silent drift.
 
 use std::path::{Path, PathBuf};
 
@@ -28,15 +29,17 @@ fn wit_hash(dir: &Path) -> u64 {
 fn main() {
     let sdk = Path::new(env!("CARGO_MANIFEST_DIR"));
     let wit = sdk.join("../wit");
-    let bindings = sdk.join("src/bindings.rs");
     println!("cargo:rerun-if-changed={}", wit.display());
-    println!("cargo:rerun-if-changed={}", bindings.display());
     let expected = format!("// wit-hash: {:016x}", wit_hash(&wit));
-    let text = std::fs::read_to_string(&bindings).unwrap_or_default();
-    if !text.lines().take(3).any(|line| line == expected) {
-        panic!(
-            "\n\nsdk/src/bindings.rs was generated from a different wit/.\n\
-             Regenerate it from the repository root:\n\n    cargo run -p bb-sdk-bindgen\n\n"
-        );
+    for generated in ["src/bindings.rs", "src/design_json.rs"] {
+        let path = sdk.join(generated);
+        println!("cargo:rerun-if-changed={}", path.display());
+        let text = std::fs::read_to_string(&path).unwrap_or_default();
+        if !text.lines().take(3).any(|line| line == expected) {
+            panic!(
+                "\n\nsdk/{generated} was generated from a different wit/.\n\
+                 Regenerate it from the repository root:\n\n    cargo run -p bb-sdk-bindgen\n\n"
+            );
+        }
     }
 }

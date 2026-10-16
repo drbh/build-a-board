@@ -1,8 +1,9 @@
-//! `cargo run -p bb-sdk-bindgen`: regenerate `sdk/src/bindings.rs` from `wit/`.
+//! `cargo run -p bb-sdk-bindgen`: regenerate the SDK's WIT-derived files from `wit/`.
 
 fn main() -> anyhow::Result<()> {
-    let (wit, out) = bb_sdk_bindgen::paths();
-    std::fs::write(&out, bb_sdk_bindgen::generate(&wit)?)?;
-    println!("Wrote {}", out.display());
+    for (path, contents) in bb_sdk_bindgen::generate_all(&bb_sdk_bindgen::paths())? {
+        std::fs::write(&path, contents)?;
+        println!("Wrote {}", path.display());
+    }
     Ok(())
 }

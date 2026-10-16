@@ -3,7 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
-use build_a_board::board::runtime::wit;
+use bb_core::wit;
+use build_a_board::artwork::ArtworkDir;
 use build_a_board::board::{BoardFile, resolve};
 use build_a_board::design::{Layer, Source};
 use build_a_board::kicad::Libraries;
@@ -180,7 +181,8 @@ fn reports_every_problem_at_once() {
     );
     let rules = wit::Rules { track_width: 0.2, clearance: 0.2, via_diameter: 0.6, via_drill: 0.3 };
     broken.netclasses.push(wit::Netclass { name: "Power".into(), nets: vec!["TYPO".into()], rules });
-    let err = format!("{:#}", resolve(broken, &Libraries::new(footprints()), root()).err().expect("invalid"));
+    let err =
+        format!("{:#}", resolve(broken, &Libraries::new(footprints()), &ArtworkDir(root())).err().expect("invalid"));
     assert!(err.starts_with("3 problem(s):"), "{err}");
     assert!(err.contains("there is no part R9"), "{err}");
     assert!(err.contains("R1 has no pad 3"), "{err}");
@@ -196,7 +198,7 @@ fn single_connection_nets_warn() {
             item(None, track("B", vec![mm(0.0, 0.0), mm(1.0, 0.0)], wit::Keep::No)),
         ],
     );
-    let resolved = resolve(lonely, &Libraries::new(footprints()), root()).unwrap();
+    let resolved = resolve(lonely, &Libraries::new(footprints()), &ArtworkDir(root())).unwrap();
     assert_eq!(resolved.warnings, ["net A connects only one pad", "net B connects no pads"]);
 }
 
@@ -211,7 +213,7 @@ fn offsets_follow_their_pad_and_turn_with_the_frame() {
             item(Some(0), track("A", vec![offset("R1", "1", 1.0, 0.5), pin("R1", "1")], wit::Keep::No)),
         ],
     );
-    let resolved = resolve(board, &Libraries::new(footprints()), root()).unwrap();
+    let resolved = resolve(board, &Libraries::new(footprints()), &ArtworkDir(root())).unwrap();
     let starts: Vec<Pt> = resolved.design.tracks.iter().map(|t| t.start).collect();
     assert_eq!(resolved.design.tracks[0].end, Pt::mm(10.0, 10.825));
     // In the board frame the offset is as written; in the frame it is turned
@@ -229,7 +231,7 @@ fn kept_tracks_are_restored_where_their_frame_puts_them() {
             item(Some(0), track("A", vec![mm(1.0, 0.0), mm(2.0, 0.0)], wit::Keep::Routed)),
         ],
     );
-    let resolved = resolve(board, &Libraries::new(footprints()), root()).unwrap();
+    let resolved = resolve(board, &Libraries::new(footprints()), &ArtworkDir(root())).unwrap();
     // Only the kept-as-laid track is on the board; both are restored after routing.
     assert_eq!(resolved.design.tracks.len(), 1);
     let restored: Vec<(Pt, Pt)> = resolved.restore.iter().map(|r| (r.start, r.end)).collect();

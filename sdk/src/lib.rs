@@ -35,6 +35,8 @@
 //! counter-clockwise on screen, as KiCad rotates footprints.
 
 mod component;
+#[doc(hidden)]
+pub mod json;
 mod net;
 pub mod units;
 mod wit;
@@ -1069,6 +1071,14 @@ macro_rules! export_board {
         }
 
         $crate::bindings::export!(BbBoard with_types_in $crate::bindings);
+
+        /// For the browser playground (a `wasm32-wasip1` module, not a
+        /// component): the design as JSON, `pointer << 32 | length`.
+        #[cfg(target_env = "p1")]
+        #[unsafe(export_name = "bb-design-json")]
+        extern "C" fn __bb_design_json() -> u64 {
+            $crate::json::design_json($build())
+        }
     };
 }
 

@@ -1,0 +1,26 @@
+[package]
+name = "bb-core-wasm"
+version = "0.1.0"
+edition = "2024"
+description = "bb-core for the browser playground: resolve a design and draw its preview"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1"
+bb-core = { path = "../../core" }
+serde = { version = "1", features = ["derive"] }
+# Exact f64s: the design's coordinates must survive the JSON hand-off.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+# Matches the installed wasm-bindgen CLI (wasm-pack checks they agree).
+wasm-bindgen = "=0.2.92"
+serde-wasm-bindgen = "0.6"
+
+[profile.release]
+opt-level = "s"
+lto = true
+
+# Built by playground/build.sh for wasm32-unknown-unknown, outside bb's workspace.
+[workspace]

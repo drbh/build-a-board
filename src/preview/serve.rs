@@ -11,8 +11,10 @@ use std::time::{Duration, Instant, SystemTime};
 use anyhow::{Context as _, Result};
 use serde_json::json;
 
-use super::svg::{self, Status};
-use super::{Scene, open};
+use bb_core::preview::Scene;
+use bb_core::preview::svg::{self, Status};
+
+use super::{open, scene};
 use crate::board::BoardFile;
 use crate::kicad::Libraries;
 
@@ -125,7 +127,7 @@ fn build(path: &Path, footprints: &Path, libraries: &Libraries, routed: bool) ->
         eprintln!("warning: {warning}");
     }
     let pcb = board.dir.join(&board.project.kicad_dir).join(format!("{}.kicad_pcb", board.project.name));
-    Scene::new(&board, libraries, routed.then_some(pcb.as_path()))
+    scene(&board, libraries, routed.then_some(pcb.as_path()))
 }
 
 /// Bind the first free port from `port` up.

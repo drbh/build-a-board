@@ -1,19 +1,79 @@
-//! Resolve a board component's design into a [`design::Board`].
+//! Resolve a board program's design into a [`design::Board`].
 //!
 //! Resolution is order-independent: every part is placed first (composing
 //! frames), then pin anchors are resolved against the placed pads, then the
 //! netlist is validated. Every problem is collected and reported together.
 
 use std::collections::{BTreeMap, HashMap};
-use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::{Context as _, Result, anyhow, bail};
 
-use super::runtime::wit;
-use super::{Artwork, Project, Restore, SchematicConfig};
+use crate::artwork::{ArtworkSource, Tone};
 use crate::design::{self, Footprint, GeneratedFootprint, Graphic, Layer, LibraryFootprint, Model, ModelEdit, Source};
-use crate::kicad::Libraries;
+use crate::footprint::FootprintSource;
 use crate::units::{Nm, Pt};
+use crate::wit;
+
+/// Release settings for the board project.
+#[derive(Clone, Debug, Default)]
+pub struct Project {
+    /// KiCad project stem: `<name>.kicad_pcb`, `<name>.kicad_pro`, ...
+    pub name: String,
+    /// Approved parts list, relative to the board directory.
+    pub bom: String,
+    /// MPN → LCSC part number for JLCPCB-assembled parts.
+    pub lcsc: Vec<(String, String)>,
+    /// Boards per DigiKey shopping-list order.
+    pub order_quantity: u32,
+    pub gerber_layers: String,
+    /// Reference prefixes that never appear in the BOM (holes, logos, ...).
+    pub unsourced: Vec<String>,
+    /// Board-directory files shipped in the complete release archive.
+    pub release_files: Vec<String>,
+    /// Where the KiCad project lives, relative to the board directory.
+    pub kicad_dir: String,
+    pub schematic: SchematicConfig,
+    /// Copper weight recorded in the review lock.
+    pub copper_weight_oz: u32,
+    /// Review decisions recorded in the lock, e.g. accepted risks.
+    pub decisions: Vec<(String, String)>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SchematicConfig {
+    pub title: String,
+    pub company: Option<String>,
+    pub revision: String,
+    pub comment: Option<String>,
+    pub library: String,
+}
+
+/// A raster image to trace onto silkscreen as a generated footprint.
+#[derive(Clone, Debug)]
+pub struct Artwork {
+    pub reference: String,
+    pub value: String,
+    pub library: String,
+    pub name: String,
+    /// The image file, as the [`ArtworkSource`] located it.
+    pub image: PathBuf,
+    pub center: (f64, f64),
+    pub width: f64,
+    pub layer: Layer,
+    pub tone: Tone,
+}
+
+/// A track segment the router must leave at least this wide (or recreate),
+/// from a track the design marked to keep.
+#[derive(Clone, Debug)]
+pub struct Restore {
+    pub net: String,
+    pub layer: Layer,
+    pub start: Pt,
+    pub end: Pt,
+    pub width: Nm,
+}
 
 /// Everything a design resolves to.
 pub struct Resolved {
@@ -180,8 +240,8 @@ enum Pending {
 }
 
 struct Collector<'a> {
-    libraries: &'a Libraries,
-    dir: &'a Path,
+    libraries: &'a dyn FootprintSource,
+    images: &'a dyn ArtworkSource,
     hide_prefixes: &'a [String],
     board: design::Board,
     pending: Vec<Pending>,
@@ -283,10 +343,9 @@ impl Collector<'_> {
                 frame,
             }),
             wit::Shape::Artwork(a) => {
-                let image = self.dir.join(&a.image);
-                if !image.is_file() {
-                    bail!("artwork image not found: {}", image.display());
-                }
+                let Some(image) = self.images.locate(&a.image) else {
+                    bail!("artwork image not found: {}", a.image);
+                };
                 let (library, name) =
                     lib_id(&a.footprint.clone().unwrap_or_else(|| format!("Artwork:{}", a.reference)))?;
                 let file_name = image.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
@@ -300,8 +359,8 @@ impl Collector<'_> {
                     width: a.width,
                     layer: layer(&a.layer)?,
                     tone: match a.tone {
-                        wit::Tone::Light => crate::artwork::Tone::Light,
-                        wit::Tone::Dark => crate::artwork::Tone::Dark,
+                        wit::Tone::Light => Tone::Light,
+                        wit::Tone::Dark => Tone::Dark,
                     },
                 });
             }
@@ -373,7 +432,7 @@ fn label(shape: &wit::Shape) -> String {
 }
 
 /// Board-frame pad centres of every placed footprint, in pad order.
-fn pad_map(board: &design::Board, libraries: &Libraries) -> Result<HashMap<String, Vec<(String, Pt)>>> {
+fn pad_map(board: &design::Board, libraries: &dyn FootprintSource) -> Result<HashMap<String, Vec<(String, Pt)>>> {
     let mut pads = HashMap::new();
     for fp in &board.footprints {
         let placed = match &fp.source {
@@ -412,13 +471,13 @@ fn project(p: wit::Project) -> Project {
     }
 }
 
-/// Resolve a design returned by a board component; `dir` is where its
-/// artwork lives.
-pub fn resolve(design: wit::Design, libraries: &Libraries, dir: &Path) -> Result<Resolved> {
+/// Resolve a design returned by a board program, placing footprints from
+/// `libraries` and finding artwork through `images`.
+pub fn resolve(design: wit::Design, libraries: &dyn FootprintSource, images: &dyn ArtworkSource) -> Result<Resolved> {
     let frames = frames(&design.frames)?;
     let mut collector = Collector {
         libraries,
-        dir,
+        images,
         hide_prefixes: &design.hide_references,
         board: design::Board {
             copper_layers: u8::try_from(design.copper_layers).context("copper layer count")?,

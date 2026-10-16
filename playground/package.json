@@ -1,0 +1,32 @@
+{
+  "name": "bb-playground",
+  "private": true,
+  "description": "Edit a board in the browser and see it drawn: rustc and bb-core running in the tab",
+  "type": "module",
+  "scripts": {
+    "assets": "./tools/assets.sh",
+    "dev": "vite",
+    "build": "svelte-check && vite build",
+    "preview": "vite preview",
+    "check": "svelte-check"
+  },
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "0.4.2",
+    "@codemirror/commands": "6.8.0",
+    "@codemirror/lang-rust": "6.0.1",
+    "@codemirror/lint": "6.8.4",
+    "@codemirror/state": "6.5.2",
+    "@codemirror/theme-one-dark": "6.1.2",
+    "@codemirror/view": "6.36.2",
+    "codemirror": "6.0.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@tsconfig/svelte": "5.0.8",
+    "@types/node": "25.9.8",
+    "svelte": "5.57.1",
+    "svelte-check": "4.7.6",
+    "typescript": "5.9.3",
+    "vite": "8.3.1"
+  }
+}

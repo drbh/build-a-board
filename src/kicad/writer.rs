@@ -5,6 +5,7 @@
 //! order and number formatting, so only the semantics here must be exact.
 
 use anyhow::{Result, bail};
+use bb_core::footprint::FootprintSource as _;
 use uuid::Uuid;
 
 use super::library::Libraries;

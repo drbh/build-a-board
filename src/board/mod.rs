@@ -6,80 +6,22 @@
 //! component when needed, runs it in a sandbox, and resolves the design it
 //! returns. Any language that targets the `bb:board` WIT world works.
 
-mod resolve;
+mod convert;
 pub mod runtime;
 
-pub use resolve::{Resolved, resolve};
+pub use bb_core::resolve::{Artwork, Project, Resolved, Restore, SchematicConfig, resolve};
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 
-use crate::design::{self, Layer};
+use crate::artwork::ArtworkDir;
+use crate::design;
 use crate::kicad::Libraries;
 use crate::process::Cmd;
 use crate::units::{Nm, Pt};
 use runtime::{Guest, wit};
-
-/// Release settings for the board project.
-#[derive(Clone, Debug, Default)]
-pub struct Project {
-    /// KiCad project stem: `<name>.kicad_pcb`, `<name>.kicad_pro`, ...
-    pub name: String,
-    /// Approved parts list, relative to the board directory.
-    pub bom: String,
-    /// MPN → LCSC part number for JLCPCB-assembled parts.
-    pub lcsc: Vec<(String, String)>,
-    /// Boards per DigiKey shopping-list order.
-    pub order_quantity: u32,
-    pub gerber_layers: String,
-    /// Reference prefixes that never appear in the BOM (holes, logos, ...).
-    pub unsourced: Vec<String>,
-    /// Board-directory files shipped in the complete release archive.
-    pub release_files: Vec<String>,
-    /// Where the KiCad project lives, relative to the board directory.
-    pub kicad_dir: String,
-    pub schematic: SchematicConfig,
-    /// Copper weight recorded in the review lock.
-    pub copper_weight_oz: u32,
-    /// Review decisions recorded in the lock, e.g. accepted risks.
-    pub decisions: Vec<(String, String)>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct SchematicConfig {
-    pub title: String,
-    pub company: Option<String>,
-    pub revision: String,
-    pub comment: Option<String>,
-    pub library: String,
-}
-
-/// A raster image to trace onto silkscreen as a generated footprint.
-#[derive(Clone, Debug)]
-pub struct Artwork {
-    pub reference: String,
-    pub value: String,
-    pub library: String,
-    pub name: String,
-    pub image: PathBuf,
-    pub center: (f64, f64),
-    pub width: f64,
-    pub layer: Layer,
-    pub tone: crate::artwork::Tone,
-}
-
-/// A track segment the router must leave at least this wide (or recreate),
-/// from a track the design marked to keep.
-#[derive(Clone, Debug)]
-pub struct Restore {
-    pub net: String,
-    pub layer: Layer,
-    pub start: Pt,
-    pub end: Pt,
-    pub width: Nm,
-}
 
 /// The board program, built, run, and resolved.
 pub struct BoardFile {
@@ -166,7 +108,7 @@ impl BoardFile {
         let mut guest = Guest::load(&wasm)?;
         let built = guest.build()?;
         let libraries = Libraries::new(footprint_root);
-        let resolved = resolve::resolve(built, &libraries, &dir)
+        let resolved = resolve(built.into(), &libraries, &ArtworkDir(&dir))
             .with_context(|| format!("in the board built from {}", component.display()))?;
         let mut inputs = vec![component.clone()];
         inputs.extend(libraries.files());

@@ -1,0 +1,40 @@
+/* The board drawing bb-core emits: the same classes `bb preview` styles
+   (core/src/preview/page.html). */
+.drawing svg line, .drawing svg path { stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.drawing svg text { font-family: ui-monospace, Menlo, monospace; text-anchor: middle; dominant-baseline: central; stroke: none; }
+.drawing .board { fill: var(--board); }
+.drawing .k-edge { stroke: var(--edge); fill: none; }
+.drawing .k-cu-f { stroke: var(--cu-f); opacity: .9; } .drawing .k-cu-b { stroke: var(--cu-b); opacity: .85; }
+.drawing .k-zone-f { stroke: var(--cu-f); fill: url(#hatch-f); } .drawing .k-zone-b { stroke: var(--cu-b); fill: url(#hatch-b); }
+.drawing .k-zone-f.filled { fill: var(--cu-f); fill-opacity: .28; stroke: none; }
+.drawing .k-zone-b.filled { fill: var(--cu-b); fill-opacity: .28; stroke: none; }
+.drawing .pad-f { fill: var(--pad-f); } .drawing .pad-b { fill: var(--pad-b); } .drawing .pad-tht { fill: var(--tht); }
+.drawing .k-pad.filled { fill: #05070a; stroke: var(--tht); stroke-width: .05; }
+.drawing .hole { fill: #05070a; }
+.drawing .k-via { fill: var(--via); }
+.drawing .k-silk-f { stroke: var(--silk); fill: none; } .drawing .k-silk-f.filled { fill: var(--silk); }
+.drawing .k-silk-b { stroke: var(--silk-b); fill: none; } .drawing .k-silk-b.filled { fill: var(--silk-b); }
+.drawing text.k-silk-f { fill: var(--silk); stroke: none; } .drawing text.k-silk-b { fill: var(--silk-b); stroke: none; }
+.drawing image.k-silk-b, .drawing image.k-art { opacity: .45; }
+.drawing .k-fab { stroke: var(--fab); fill: none; } .drawing .k-fab.filled { fill: var(--fab); }
+.drawing .k-rats { stroke: var(--rats); stroke-width: .08; opacity: .75; stroke-dasharray: .4 .25; }
+.drawing .chg-halo { stroke: var(--added); fill: none; opacity: .55; }
+.drawing .chg-halo.filled { fill: var(--added); stroke: none; }
+.drawing text.chg-text { fill: var(--added) !important; }
+.drawing .chg-removed { opacity: .5; }
+.drawing line.chg-removed, .drawing path.chg-removed, .drawing polygon.chg-removed { stroke: var(--removed) !important; fill: none !important; }
+.drawing g.chg-removed, .drawing text.chg-removed, .drawing circle.chg-removed { fill: var(--removed) !important; }
+.drawing .chg-moved { stroke: var(--moved); fill: none; stroke-width: .25; }
+.drawing .chg-ghost { stroke: var(--moved); fill: none; stroke-width: .15; stroke-dasharray: .6 .4; opacity: .8; }
+.drawing .chg-arrow { stroke: var(--moved); stroke-width: .2; marker-end: url(#arrow); }
+.drawing .chg-added-box { stroke: var(--added); fill: none; stroke-width: .25; }
+.drawing .chg-edited-box { stroke: var(--moved); fill: none; stroke-width: .2; stroke-dasharray: .3 .2; }
+.drawing .chg-removed-box { stroke: var(--removed); fill: none; stroke-width: .2; stroke-dasharray: .6 .4; }
+.drawing [data-net] { cursor: pointer; }
+.drawing svg.highlight [data-net] { opacity: .25; }
+.drawing svg.highlight .hl { opacity: 1 !important; filter: drop-shadow(0 0 .5px #fff); }
+
+/* Hidden layers (see layers.ts). */
+.hide-cu-f .k-cu-f, .hide-cu-b .k-cu-b, .hide-pad .k-pad, .hide-via .k-via,
+.hide-zone-f .k-zone-f, .hide-zone-b .k-zone-b, .hide-silk-f .k-silk-f,
+.hide-fab .k-fab, .hide-rats .k-rats, .hide-changes .changes { display: none; }

@@ -269,6 +269,19 @@ always produces the same design, which is what lets `bb` hash the
 component is through the `Design` it returns. Images and parts lists are
 read by `bb` itself, from the paths the design names.
 
+## Playground
+
+[`playground/`](playground) is a browser playground: edit a board's Rust on
+the left and see it drawn on the right, compiled by `rustc` running in the
+tab about half a second after each edit. It draws with `bb-core`, the same
+code as `bb preview`, so the two pictures are identical.
+
+```sh
+cd playground && npm install && npm run assets && npm run dev   # http://127.0.0.1:7820/
+```
+
+It is a Vite + Svelte app; `playground/build.sh` builds it for hosting.
+
 ## Preview
 
 `bb preview` draws the board straight from its design, without KiCad, in a

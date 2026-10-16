@@ -1,0 +1,14 @@
+[package]
+name = "bb-core"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.94"
+description = "The browser-safe half of bb: the design model, the resolver, and the preview renderer"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+serde_json = { version = "1", features = ["float_roundtrip"] }

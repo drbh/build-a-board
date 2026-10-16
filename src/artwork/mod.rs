@@ -12,12 +12,15 @@ mod raster;
 
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail, ensure};
+use bb_core::artwork::{ArtworkImage, ArtworkSource};
 
 use contours::Point;
 use raster::Gray;
+
+pub use bb_core::artwork::Tone;
 
 /// Silkscreen raster pitch.
 pub const RASTER_MM: f64 = 0.10;
@@ -30,13 +33,21 @@ const SIMPLIFY_PX: f64 = 0.65;
 /// Smallest kept outline or hole, in square raster pixels.
 const MIN_AREA_PX: f64 = 2.0;
 
-/// Which part of the artwork becomes silkscreen.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Tone {
-    /// Light linework on transparency prints as silk.
-    Light,
-    /// Dark linework prints; its light details become negative space.
-    Dark,
+/// Artwork images found in the board directory, as the design names them.
+pub struct ArtworkDir<'a>(pub &'a Path);
+
+impl ArtworkSource for ArtworkDir<'_> {
+    fn locate(&self, image: &str) -> Option<PathBuf> {
+        let path = self.0.join(image);
+        path.is_file().then_some(path)
+    }
+
+    fn image(&self, path: &Path) -> Option<ArtworkImage> {
+        let png = std::fs::read(path).ok()?;
+        let reader = png::Decoder::new(std::io::Cursor::new(&png)).read_info().ok()?;
+        let (width, height) = (reader.info().width, reader.info().height);
+        Some(ArtworkImage { png, width, height })
+    }
 }
 
 /// One filled silkscreen region in raster pixels.
