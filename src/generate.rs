@@ -13,11 +13,11 @@ use std::path::Path;
 use anyhow::{Context, Result};
 
 use crate::artwork;
+use crate::board::{Artwork, BoardFile};
 use crate::design::{self, Footprint, GeneratedFootprint, Graphic, Source};
 use crate::kicad::{Libraries, normalize, project, writer};
 use crate::polygon::kicad_fracture;
 use crate::process::Tools;
-use crate::script::{Artwork, BoardFile};
 use crate::units::{Nm, Pt};
 
 /// Paths of the generated KiCad files.

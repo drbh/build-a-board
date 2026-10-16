@@ -1,0 +1,13 @@
+[package]
+name = "fixture-board"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bb-sdk = { path = "../../../sdk" }
+
+# Built by bb for wasm32-wasip2, outside the tool's workspace.
+[workspace]

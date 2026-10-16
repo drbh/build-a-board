@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context as _, Result, bail};
 
+use crate::board::BoardFile;
 use crate::generate::{self, Outputs};
 use crate::kicad::{edit, netlist, normalize};
 use crate::process::{Cmd, Tools};
@@ -12,7 +13,6 @@ use crate::release::archive::{copy_with_times, zip_files};
 use crate::release::bom::{self, BomOutputs, Table};
 use crate::release::lock::{self, Sources};
 use crate::schematic::{self, SchematicOptions};
-use crate::script::BoardFile;
 use crate::sexpr;
 use crate::specctra;
 
@@ -122,15 +122,15 @@ pub fn generate(ctx: &Ctx) -> Result<()> {
 }
 
 /// FreeRouting under-honours small Specctra clearances; raise every rule
-/// except SMD-to-SMD to at least 0.7 mm (700 in the DSN's µm).
-fn widen_dsn_clearances(dsn: &str) -> (String, usize) {
+/// except SMD-to-SMD to at least `minimum` (the DSN is in µm).
+fn widen_dsn_clearances(dsn: &str, minimum: u64) -> (String, usize) {
     let rule = regex::Regex::new(r"\(clearance\s+(\d+)(\s+\(type\s+[^)]+\))?\)").expect("valid regex");
     let mut count = 0;
     let text = rule.replace_all(dsn, |caps: &regex::Captures| {
         count += 1;
         let kind = caps.get(2).map_or("", |m| m.as_str());
         match caps[1].parse::<u64>() {
-            Ok(value) if !kind.contains("smd_smd") => format!("(clearance {}{kind})", value.max(700)),
+            Ok(value) if !kind.contains("smd_smd") => format!("(clearance {}{kind})", value.max(minimum)),
             _ => caps[0].to_owned(),
         }
     });
@@ -223,7 +223,7 @@ fn route_attempts(ctx: &Ctx, unrouted: &Path, attempts: u32, timeout: Duration) 
             write_board(&ctx.pcb, &board)?;
         }
         let exported = specctra::export_dsn(&board, &project_rules(ctx)?, &dsn.display().to_string())?;
-        let (text, rules) = widen_dsn_clearances(&exported);
+        let (text, rules) = widen_dsn_clearances(&exported, (ctx.board.router_clearance * 1000.0).round() as u64);
         std::fs::write(&dsn, text)?;
         println!("Exported {} ({rules} clearance rules widened for FreeRouting)", dsn.display());
         let _ = std::fs::remove_file(&ses);
@@ -246,6 +246,11 @@ fn route_attempts(ctx: &Ctx, unrouted: &Path, attempts: u32, timeout: Duration) 
                 continue;
             }
             Err(err) => return Err(err.into()),
+        }
+        // FreeRouting occasionally exits cleanly without writing a session.
+        if std::fs::metadata(&ses).map_or(true, |m| m.len() == 0) {
+            eprintln!("FreeRouting wrote no session; retrying.");
+            continue;
         }
         let report = router.join(format!("route-attempt-{attempt}-drc.json"));
         if finish_route(ctx, &ses, &report)? {
@@ -324,7 +329,11 @@ pub fn check(ctx: &Ctx) -> Result<()> {
 
 fn schematic_image(ctx: &Ctx, target: &Path) -> Result<()> {
     std::fs::create_dir_all(target)?;
-    ctx.kicad(["sch", "export", "svg", "--output"])?.arg(target).arg("--exclude-drawing-sheet").arg(&ctx.sch).run()?;
+    ctx.kicad(["sch", "export", "svg", "--output"])?
+        .arg(target)
+        .arg("--exclude-drawing-sheet")
+        .arg(&ctx.sch)
+        .run_quiet()?;
     let svg = target.join(format!("{}.svg", ctx.name()));
     let png = target.join(format!("{}-schematic.png", ctx.name()));
     Cmd::new(&ctx.tools.magick)
@@ -332,7 +341,7 @@ fn schematic_image(ctx: &Ctx, target: &Path) -> Result<()> {
         .arg(&svg)
         .args(["-background", "white", "-alpha", "remove", "-alpha", "off", "-resize", "2600x2600>"])
         .arg(&png)
-        .run()?;
+        .run_quiet()?;
     println!("Schematic images ready: {} and {}", svg.display(), png.display());
     Ok(())
 }

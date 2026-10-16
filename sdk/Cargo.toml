@@ -1,0 +1,8 @@
+[package]
+name = "bb-sdk"
+version = "0.1.0"
+edition = "2024"
+description = "Describe a KiCad board in Rust and build it as a WebAssembly component for bb"
+
+[dependencies]
+wit-bindgen = "0.51"

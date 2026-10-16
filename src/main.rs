@@ -3,17 +3,17 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use anyhow::Result;
+use build_a_board::board::BoardFile;
 use build_a_board::build;
 use build_a_board::commands::{self, Ctx};
 use build_a_board::process::Tools;
-use build_a_board::script::BoardFile;
 use clap::{Args, Parser, Subcommand};
 
-/// Build, route, check, render, and release KiCad boards described in Starlark.
+/// Build, route, check, render, and release KiCad boards described as WebAssembly components.
 #[derive(Parser)]
 #[command(name = "bb", version, about)]
 struct Cli {
-    /// Board directory holding `board.star`, or the board file itself.
+    /// Board directory (a bb-sdk crate or a board.wasm), or a .wasm component.
     #[arg(short, long, global = true, env = "BB_BOARD", default_value = ".")]
     board: PathBuf,
     /// What to do; `build` when omitted (its flags work without the word `build`).
@@ -88,7 +88,11 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<()> {
     let tools = Tools::from_env();
-    let ctx = Ctx::new(BoardFile::load(&cli.board, &tools.footprints)?, tools);
+    let board = BoardFile::load(&cli.board, &tools.footprints)?;
+    for warning in &board.warnings {
+        eprintln!("warning: {warning}");
+    }
+    let ctx = Ctx::new(board, tools);
     match cli.command.unwrap_or(Command::Build(cli.build)) {
         Command::Build(args) => build::build(
             &ctx,

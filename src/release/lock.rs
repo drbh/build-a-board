@@ -86,7 +86,7 @@ pub fn verify(lock: &Path, sources: &Sources<'_>) -> Result<()> {
 }
 
 /// Pin the committed board sources as the reviewed revision.
-pub fn lock(lock: &Path, sources: &Sources<'_>, project: &crate::script::Project) -> Result<()> {
+pub fn lock(lock: &Path, sources: &Sources<'_>, project: &crate::board::Project) -> Result<()> {
     let clean =
         Cmd::new("git").args(["diff", "--quiet", "HEAD", "--"]).args(&sources.files).cwd(sources.repo).succeeds()?;
     if !clean {

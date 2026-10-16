@@ -5,7 +5,7 @@ use std::path::Path;
 use anyhow::{Context, Result, anyhow};
 use serde_json::{Map, Value, json};
 
-use crate::design::Board;
+use crate::design::{Board, Rules};
 
 /// A brand-new KiCad 10 project, used when the board has none yet.
 const NEW_PROJECT: &str = include_str!("new_project.kicad_pro");
@@ -34,16 +34,23 @@ pub fn update(project_path: &Path, board: &Board) -> Result<()> {
     let net_settings = object(&mut data, &["net_settings"])?;
     let classes = net_settings.entry("classes").or_insert_with(|| json!([]));
     let classes = classes.as_array_mut().ok_or_else(|| anyhow!("net_settings.classes is not a list"))?;
-    let default = classes.iter().find(|c| c["name"] == "Default").cloned().unwrap_or_else(default_class);
-    classes.retain(|c| c["name"] == "Default");
+    let mut default = classes.iter().find(|c| c["name"] == "Default").cloned().unwrap_or_else(default_class);
+    let set_rules = |entry: &mut Value, rules: &Rules| {
+        entry["track_width"] = mm(rules.track_width.0);
+        entry["clearance"] = mm(rules.clearance.0);
+        entry["via_diameter"] = mm(rules.via_diameter.0);
+        entry["via_drill"] = mm(rules.via_drill.0);
+    };
+    if let Some(rules) = &board.rules {
+        set_rules(&mut default, rules);
+    }
+    classes.clear();
+    classes.push(default.clone());
     for class in &board.netclasses {
         let mut entry = default.clone();
         entry["name"] = json!(class.name);
         entry["priority"] = json!(-1);
-        entry["track_width"] = mm(class.track_width.0);
-        entry["clearance"] = mm(class.clearance.0);
-        entry["via_diameter"] = mm(class.via_diameter.0);
-        entry["via_drill"] = mm(class.via_drill.0);
+        set_rules(&mut entry, &class.rules);
         classes.push(entry);
     }
     let patterns: Vec<Value> = board

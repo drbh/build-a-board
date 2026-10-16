@@ -117,6 +117,16 @@ impl Cmd {
         self.command().status().map(|s| s.success()).map_err(|e| self.spawn_error(e))
     }
 
+    /// Capture stdout while the tool's own messages (stderr) reach the user.
+    pub fn stdout_showing_stderr(&self) -> Result<Vec<u8>, RunError> {
+        let output = self.command().stderr(Stdio::inherit()).output().map_err(|e| self.spawn_error(e))?;
+        if output.status.success() {
+            Ok(output.stdout)
+        } else {
+            Err(RunError::Failed { command: self.line(), status: output.status })
+        }
+    }
+
     /// Run silently and capture stdout; `None` if it fails.
     pub fn output(&self) -> Result<Option<Vec<u8>>, RunError> {
         let output = self.command().stderr(Stdio::null()).output().map_err(|e| self.spawn_error(e))?;

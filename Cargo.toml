@@ -1,15 +1,20 @@
+[workspace]
+members = [".", "sdk"]
+# Board crates build for wasm32-wasip2 on their own.
+exclude = ["examples", "tests/fixtures"]
+
 [package]
 name = "build-a-board"
 version = "0.2.0"
 edition = "2024"
-description = "Describe KiCad boards in Starlark and build, route, check, and release them"
+rust-version = "1.94"
+description = "Build, route, check, and release KiCad boards described as WebAssembly components"
 
 [[bin]]
 name = "bb"
 path = "src/main.rs"
 
 [dependencies]
-allocative = "0.3"
 anyhow = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 clap = { version = "4.6", features = ["derive", "env"] }
@@ -20,10 +25,11 @@ roxmltree = "0.20"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
-starlark = "0.14"
 tempfile = "3"
 thiserror = "2"
 uuid = { version = "1", features = ["v4", "v5"] }
+wasmtime = { version = "47", default-features = false, features = ["cranelift", "component-model", "runtime", "std", "cache"] }
+wasmtime-wasi = "47"
 wait-timeout = "0.2"
 walkdir = "2.5"
 which = "7"

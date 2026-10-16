@@ -8,7 +8,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use regex::Regex;
 use serde_json::Value;
 
-use crate::script::Project;
+use crate::board::Project;
 
 /// A CSV file read by header name.
 pub struct Table {

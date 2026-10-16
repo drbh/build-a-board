@@ -1,0 +1,14 @@
+[package]
+name = "balance-bot-board"
+version = "0.1.0"
+edition = "2024"
+description = "Balance Bot devboard, described with bb-sdk"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bb-sdk = { path = "../../sdk" }
+
+# Built by bb for wasm32-wasip2, outside the tool's workspace.
+[workspace]

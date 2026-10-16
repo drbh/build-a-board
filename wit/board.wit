@@ -1,0 +1,313 @@
+/// The contract between a board program and `bb`.
+///
+/// A board is a WebAssembly component exporting `build`, a pure function
+/// that returns the design. `bb` resolves it: it composes frames, places
+/// footprints, resolves pin anchors, validates the netlist, and writes KiCad.
+///
+/// Lengths are millimetres in KiCad's board frame (Y down); angles are
+/// degrees. User coordinates stay floating point across the boundary so the
+/// host can apply frames exactly as pcbnew's own arithmetic would.
+package bb:board@0.1.0;
+
+interface types {
+    record point {
+        x: f64,
+        y: f64,
+    }
+
+    /// A pad of a placed part; resolved after every part is placed.
+    record pin-ref {
+        reference: string,
+        pad: string,
+    }
+
+    /// A pad plus an offset written in the item's frame, so the offset
+    /// turns with the frame. Resolved in nanometres from the placed pad.
+    record pad-offset {
+        pad: pin-ref,
+        by: point,
+    }
+
+    variant anchor {
+        /// A point in the item's frame.
+        mm(point),
+        /// The exact centre of a pad.
+        pin(pin-ref),
+        /// A point relative to a pad.
+        offset(pad-offset),
+    }
+
+    /// A placement frame. Items in a frame are laid out relative to it;
+    /// frames nest through `parent` (an index into `design.frames`).
+    record frame {
+        parent: option<u32>,
+        at: point,
+        /// Counter-clockwise on screen, as KiCad rotates footprints.
+        rotate: f64,
+        name: option<string>,
+    }
+
+    record model {
+        path: string,
+        offset: tuple<f64, f64, f64>,
+    }
+
+    variant models {
+        /// Keep the library footprint's 3D models.
+        keep,
+        /// Keep the first model's placement, swap its file.
+        swap(string),
+        /// Replace every model; an empty list removes them.
+        replace(list<model>),
+    }
+
+    /// A stock KiCad library footprint (`Library:Name`).
+    record part {
+        reference: string,
+        value: string,
+        footprint: string,
+        /// Pad number to net.
+        pins: list<tuple<string, string>>,
+        models: models,
+    }
+
+    enum pad-shape {
+        rect,
+        circle,
+        oval,
+        roundrect,
+    }
+
+    /// A pad of a generated footprint, in footprint-local mm.
+    record pad {
+        number: string,
+        at: point,
+        size: point,
+        /// Plated drill diameter; none for an SMD pad.
+        drill: option<f64>,
+        shape: pad-shape,
+        net: option<string>,
+    }
+
+    record fp-line {
+        layer: string,
+        start: point,
+        end: point,
+        width: f64,
+    }
+
+    /// A footprint built from pads and graphics.
+    record generated {
+        reference: string,
+        value: string,
+        footprint: string,
+        pads: list<pad>,
+        /// Fab outline plus a 0.25 mm courtyard around a centred body.
+        body: option<point>,
+        graphics: list<fp-line>,
+        models: list<model>,
+    }
+
+    variant footprint {
+        library(part),
+        generated(generated),
+    }
+
+    /// A footprint at a position in the item's frame.
+    record placement {
+        footprint: footprint,
+        at: point,
+        /// Counter-clockwise on screen.
+        rotate: f64,
+        /// Hide the designator whatever `design.hide-references` says.
+        hide-reference: bool,
+    }
+
+    /// What becomes of a fixed track when the board is routed.
+    enum keep {
+        /// Laid before routing; the router may thin or drop it.
+        no,
+        /// Laid before routing and put back at least as wide afterwards.
+        laid,
+        /// Left to the router, then made at least as wide afterwards.
+        routed,
+    }
+
+    record track {
+        net: string,
+        points: list<anchor>,
+        width: f64,
+        layer: string,
+        keep: keep,
+    }
+
+    record via {
+        net: string,
+        at: anchor,
+        diameter: f64,
+        drill: f64,
+    }
+
+    record zone {
+        net: string,
+        layer: string,
+        outline: list<anchor>,
+        priority: u32,
+        clearance: f64,
+        min-thickness: f64,
+    }
+
+    record text {
+        text: string,
+        at: point,
+        size: f64,
+        rotate: f64,
+        layer: string,
+        thickness: f64,
+    }
+
+    record outline {
+        layer: string,
+        points: list<anchor>,
+        width: f64,
+        closed: bool,
+    }
+
+    enum axis {
+        /// Legends in a row at a fixed Y, each at its pad's X.
+        row,
+        /// Legends in a column at a fixed X, each at its pad's Y.
+        column,
+    }
+
+    record pin-legends {
+        reference: string,
+        legends: list<tuple<string, string>>,
+        axis: axis,
+        at: f64,
+        size: f64,
+        rotate: f64,
+        layer: string,
+    }
+
+    enum tone {
+        light,
+        dark,
+    }
+
+    /// A PNG in the board directory, traced onto silkscreen.
+    record artwork {
+        reference: string,
+        image: string,
+        center: point,
+        width: f64,
+        layer: string,
+        tone: tone,
+        value: option<string>,
+        footprint: option<string>,
+    }
+
+    variant shape {
+        placement(placement),
+        track(track),
+        via(via),
+        zone(zone),
+        text(text),
+        outline(outline),
+        pin-legends(pin-legends),
+        artwork(artwork),
+    }
+
+    record item {
+        /// Index into `design.frames`; none for the board frame.
+        frame: option<u32>,
+        shape: shape,
+    }
+
+    /// Track width, clearance, and via size, in mm.
+    record rules {
+        track-width: f64,
+        clearance: f64,
+        via-diameter: f64,
+        via-drill: f64,
+    }
+
+    record netclass {
+        name: string,
+        nets: list<string>,
+        rules: rules,
+    }
+
+    record schematic {
+        title: option<string>,
+        company: option<string>,
+        revision: option<string>,
+        comment: option<string>,
+        library: option<string>,
+    }
+
+    /// The KiCad project and its release settings.
+    record project {
+        name: string,
+        bom: string,
+        lcsc: list<tuple<string, string>>,
+        order-quantity: u32,
+        gerber-layers: string,
+        unsourced: option<list<string>>,
+        checks: list<string>,
+        release-check: option<string>,
+        contract: option<string>,
+        release-files: list<string>,
+        kicad-dir: string,
+        schematic: schematic,
+        copper-weight-oz: u32,
+        decisions: list<tuple<string, string>>,
+    }
+
+    record finish {
+        mask: string,
+        silk: string,
+        copper: string,
+    }
+
+    /// The design. Its nets are those its parts and copper use.
+    record design {
+        project: project,
+        /// Nets deliberately connected to fewer than two pads.
+        no-connect: list<string>,
+        /// Board-wide rules: the Default net class.
+        rules: option<rules>,
+        netclasses: list<netclass>,
+        /// `.kicad_pro` DRC rule severities.
+        severities: list<tuple<string, string>>,
+        copper-layers: u32,
+        hide-references: list<string>,
+        finish: option<finish>,
+        unlink-after-route: option<string>,
+        /// The clearance FreeRouting is given (mm), in place of the board's
+        /// own; `none` means 0.7. FreeRouting under-honours small clearances,
+        /// but fine-pitch parts cannot escape a wide one.
+        router-clearance: option<f64>,
+        frames: list<frame>,
+        items: list<item>,
+    }
+
+    /// A routed segment offered to `route-width`.
+    record routed-track {
+        net: string,
+        layer: string,
+        width: f64,
+        start: point,
+        end: point,
+    }
+}
+
+world board {
+    use types.{design, routed-track};
+
+    /// The design. Must be deterministic: same inputs, same design.
+    export build: func() -> result<design, string>;
+
+    /// After autorouting, the new width of a routed segment (none keeps it).
+    export route-width: func(track: routed-track) -> option<f64>;
+}

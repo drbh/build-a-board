@@ -1,4 +1,4 @@
-//! The resolved board design: what the Starlark board file evaluates to and
+//! The resolved board design: what a board component's design resolves to and
 //! what the KiCad writer serialises.
 //!
 //! Geometry is in integer nanometres. Footprint-local geometry of generated
@@ -93,8 +93,10 @@ impl PadShape {
 #[derive(Clone, Debug, Default)]
 pub struct Board {
     pub copper_layers: u8,
-    /// Declared nets, independent of use.
+    /// Every net the design uses.
     pub nets: BTreeSet<String>,
+    /// Board-wide rules, written to the Default net class.
+    pub rules: Option<Rules>,
     pub netclasses: Vec<NetClass>,
     pub footprints: Vec<Footprint>,
     pub graphics: Vec<Graphic>,
@@ -107,13 +109,19 @@ pub struct Board {
     pub finish: Option<Finish>,
 }
 
+/// Track width, clearance, and via size.
 #[derive(Clone, Debug, PartialEq)]
-pub struct NetClass {
-    pub name: String,
+pub struct Rules {
     pub track_width: Nm,
     pub clearance: Nm,
     pub via_diameter: Nm,
     pub via_drill: Nm,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NetClass {
+    pub name: String,
+    pub rules: Rules,
     /// Net name patterns assigned to this class.
     pub nets: Vec<String>,
 }
