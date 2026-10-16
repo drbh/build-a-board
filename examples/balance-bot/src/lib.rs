@@ -198,19 +198,7 @@ fn project() -> Project {
             ("BXJ25V470M10*10 10.0TP", "C3002464"),
         ])
         .order_quantity(5)
-        .release_files([
-            "Cargo.toml",
-            "Cargo.lock",
-            "src",
-            "Makefile",
-            "README.md",
-            "requirements.txt",
-            "biggie.png",
-            "jameo.png",
-            "bom",
-            "docs",
-            "tools",
-        ])
+        .release_files(["Cargo.toml", "Cargo.lock", "src", "biggie.png", "jameo.png", "bom"])
         .decisions([
             ("dual_servo_stall", "Accepted: protected 6 V rail may droop and servos may brown out"),
             ("module_footprints", "Verified against the intended physical modules"),

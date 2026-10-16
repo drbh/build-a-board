@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use chrono::{DateTime, Datelike, Local, Timelike};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
@@ -13,6 +13,15 @@ use zip::{CompressionMethod, ZipWriter};
 /// Zip files and directory trees (minus Python caches). Entries are named
 /// relative to `root`, or by bare file name when `flatten` is set.
 pub fn zip_files(destination: &Path, root: &Path, entries: &[PathBuf], flatten: bool) -> Result<()> {
+    // Check everything first, so a missing input never leaves a partial archive.
+    let missing: Vec<String> = entries
+        .iter()
+        .filter(|entry| !entry.exists())
+        .map(|entry| entry.strip_prefix(root).unwrap_or(entry).display().to_string())
+        .collect();
+    if !missing.is_empty() {
+        bail!("cannot write {}: missing {}", destination.display(), missing.join(", "));
+    }
     match fs::remove_file(destination) {
         Err(err) if err.kind() != io::ErrorKind::NotFound => return Err(err.into()),
         _ => {}
@@ -86,4 +95,20 @@ pub fn copy_with_times(source: &Path, destination: &Path) -> Result<()> {
     }
     File::options().write(true).open(destination)?.set_times(times)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_missing_input_names_every_gap_and_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("present.txt"), "x").unwrap();
+        let zip = dir.path().join("out.zip");
+        let entries = ["present.txt", "Makefile", "docs"].map(|f| dir.path().join(f));
+        let err = zip_files(&zip, dir.path(), &entries, false).unwrap_err().to_string();
+        assert!(err.ends_with("missing Makefile, docs"), "{err}");
+        assert!(!zip.exists());
+    }
 }
