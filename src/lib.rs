@@ -10,6 +10,7 @@ pub mod generate;
 pub mod json;
 pub mod kicad;
 pub mod polygon;
+pub mod preview;
 pub mod process;
 pub mod release;
 pub mod schematic;

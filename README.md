@@ -218,6 +218,9 @@ Mistakes surface in three places:
 
 `items![...]` accepts parts, handles (`&placed`), groups, vectors, arrays,
 and `Option`s, so conditional and generated content composes naturally.
+[`examples/indicator`](examples/indicator) is the place to start: four
+LEDs on a 5 V header, each resistor sized from the LED's forward voltage
+and a design test, every track routed by hand.
 [`examples/buck-converter`](examples/buck-converter) is the smallest
 complete board: one parametric block, `Buck::new(v(5))`, that picks its
 feedback resistor from the E96 series for the requested output, a pair of
@@ -247,6 +250,28 @@ always produces the same design, which is what lets `bb` hash the
 `.wasm` as the board's input. The only way information leaves the
 component is through the `Design` it returns. Images and parts lists are
 read by `bb` itself, from the paths the design names.
+
+## Preview
+
+`bb preview` draws the board straight from its design, without KiCad, in a
+fraction of a second: footprints (pads and silkscreen from the library
+files), tracks, vias, zone outlines, text, artwork, and a **ratsnest** of
+the connections still to route. It writes `output/preview.html`.
+
+```sh
+bb --board examples/buck-converter preview --watch --open
+```
+
+`--watch` rebuilds on every save (an edit shows up in under a second) and
+serves a page that reloads itself, keeping your pan and zoom. It
+highlights what each edit changed: moved parts (new outline solid, old
+dashed, with an arrow), and added or removed copper. Click a pad or track
+to highlight its net. `--routed` draws copper from the generated or routed
+KiCad board instead, with KiCad's zone fills, so the ratsnest shows what
+routing left unconnected (0 for an accepted route).
+
+The preview is a viewing aid, not an output: text uses a stand-in font and
+reference designators sit where the library puts them.
 
 ## How it works
 

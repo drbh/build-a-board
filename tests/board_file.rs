@@ -266,7 +266,7 @@ fn small_examples_build() {
         eprintln!("skipping: needs KiCad footprint libraries and wasm32-wasip2");
         return;
     }
-    for name in ["buck-converter", "led-ring", "usb-uart"] {
+    for name in ["indicator", "buck-converter", "led-ring", "usb-uart"] {
         let board = BoardFile::load(&root().join("examples").join(name), &tools.footprints).expect(name);
         assert!(board.warnings.is_empty(), "{name}: {:?}", board.warnings);
         if name == "buck-converter" {

@@ -25,7 +25,7 @@ pub fn data(i: usize) -> Net {
 
 const CENTER: (f64, f64) = (50.0, 50.0);
 const BOARD_RADIUS: f64 = 25.0;
-const LED_RADIUS: f64 = 18.0;
+const LED_RADIUS: f64 = 20.0;
 const CAP_RADIUS: f64 = 13.0;
 /// Worst-case draw per LED, all three colours at full brightness.
 const LED_MAX_MA: f64 = 60.0;

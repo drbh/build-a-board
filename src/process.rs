@@ -119,12 +119,15 @@ impl Cmd {
 
     /// Capture stdout while the tool's own messages (stderr) reach the user.
     pub fn stdout_showing_stderr(&self) -> Result<Vec<u8>, RunError> {
+        let (status, stdout) = self.stdout_and_status()?;
+        if status.success() { Ok(stdout) } else { Err(RunError::Failed { command: self.line(), status }) }
+    }
+
+    /// Like [`Cmd::stdout_showing_stderr`], but returns stdout whether or not
+    /// the tool succeeded.
+    pub fn stdout_and_status(&self) -> Result<(ExitStatus, Vec<u8>), RunError> {
         let output = self.command().stderr(Stdio::inherit()).output().map_err(|e| self.spawn_error(e))?;
-        if output.status.success() {
-            Ok(output.stdout)
-        } else {
-            Err(RunError::Failed { command: self.line(), status: output.status })
-        }
+        Ok((output.status, output.stdout))
     }
 
     /// Run silently and capture stdout; `None` if it fails.

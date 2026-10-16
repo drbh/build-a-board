@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} · bb preview</title>
+<style>
+  :root {
+    --bg: #0d1014; --panel: #161b22; --ink: #d6dde6; --muted: #8b96a5; --line: #263040;
+    --board: #0f2a1c; --edge: #e6d34a; --cu-f: #c94a4a; --cu-b: #4a7ccf; --pad-f: #e0675f;
+    --pad-b: #6c95e0; --tht: #d1ad45; --via: #b8bec7; --silk: #ece7c9; --silk-b: #b9a6f0;
+    --fab: #6e7682; --rats: #f4f4f4; --added: #3fe07a; --moved: #ff4fd8; --removed: #ff5a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 8px 16px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  h1 { font-size: 14px; margin: 0; font-weight: 600; }
+  #status { color: var(--muted); }
+  #changes { color: var(--moved); }
+  #error { display: none; width: 100%; white-space: pre-wrap; color: var(--removed);
+    font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 30vh; overflow: auto; }
+  #error.show { display: block; }
+  .layers { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .layers label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); cursor: pointer; }
+  .layers i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  button { background: var(--line); color: var(--ink); border: 0; border-radius: 4px; padding: 3px 9px; cursor: pointer; font: inherit; }
+  #net { color: var(--ink); }
+  main { flex: 1; min-height: 0; position: relative; }
+  main > svg { width: 100%; height: 100%; display: block; cursor: grab; }
+  main > svg.dragging { cursor: grabbing; }
+  svg line, svg path { stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  svg text { font-family: ui-monospace, Menlo, monospace; text-anchor: middle; dominant-baseline: central; stroke: none; }
+  .board { fill: var(--board); }
+  .k-edge { stroke: var(--edge); fill: none; }
+  .k-cu-f { stroke: var(--cu-f); opacity: .9; } .k-cu-b { stroke: var(--cu-b); opacity: .85; }
+  .k-zone-f { stroke: var(--cu-f); fill: url(#hatch-f); } .k-zone-b { stroke: var(--cu-b); fill: url(#hatch-b); }
+  .k-zone-f.filled { fill: var(--cu-f); fill-opacity: .28; stroke: none; }
+  .k-zone-b.filled { fill: var(--cu-b); fill-opacity: .28; stroke: none; }
+  .pad-f { fill: var(--pad-f); } .pad-b { fill: var(--pad-b); } .pad-tht { fill: var(--tht); }
+  .k-pad.filled { fill: #05070a; stroke: var(--tht); stroke-width: .05; }
+  .hole { fill: #05070a; }
+  .k-via { fill: var(--via); }
+  .k-silk-f { stroke: var(--silk); fill: none; } .k-silk-f.filled { fill: var(--silk); }
+  .k-silk-b { stroke: var(--silk-b); fill: none; } .k-silk-b.filled { fill: var(--silk-b); }
+  text.k-silk-f { fill: var(--silk); stroke: none; } text.k-silk-b { fill: var(--silk-b); stroke: none; }
+  image.k-silk-b, image.k-art { opacity: .45; }
+  .k-fab { stroke: var(--fab); fill: none; } .k-fab.filled { fill: var(--fab); }
+  .k-rats { stroke: var(--rats); stroke-width: .08; opacity: .75; stroke-dasharray: .4 .25; }
+  .chg-halo { stroke: var(--added); fill: none; opacity: .55; }
+  .chg-halo.filled { fill: var(--added); stroke: none; }
+  text.chg-text { fill: var(--added) !important; }
+  .chg-removed { opacity: .5; }
+  line.chg-removed, path.chg-removed, polygon.chg-removed { stroke: var(--removed) !important; fill: none !important; }
+  g.chg-removed, text.chg-removed, circle.chg-removed { fill: var(--removed) !important; }
+  .chg-moved { stroke: var(--moved); fill: none; stroke-width: .25; }
+  .chg-ghost { stroke: var(--moved); fill: none; stroke-width: .15; stroke-dasharray: .6 .4; opacity: .8; }
+  .chg-arrow { stroke: var(--moved); stroke-width: .2; marker-end: url(#arrow); }
+  .chg-added-box { stroke: var(--added); fill: none; stroke-width: .25; }
+  .chg-edited-box { stroke: var(--moved); fill: none; stroke-width: .2; stroke-dasharray: .3 .2; }
+  .chg-removed-box { stroke: var(--removed); fill: none; stroke-width: .2; stroke-dasharray: .6 .4; }
+  [data-net] { cursor: pointer; }
+  svg.highlight [data-net] { opacity: .25; }
+  svg.highlight .hl { opacity: 1 !important; filter: drop-shadow(0 0 .5px #fff); }
+  footer { padding: 4px 16px; color: var(--muted); background: var(--panel); border-top: 1px solid var(--line); font-size: 12px; }
+</style>
+<style id="hidden"></style>
+</head>
+<body>
+<header>
+  <h1>{{TITLE}}</h1>
+  <span id="status">{{STATUS}}</span>
+  <span id="changes"></span>
+  <div class="layers" id="layers"></div>
+  <button id="fit" title="Fit the board (F)">Fit</button>
+  <span id="net"></span>
+  <div id="error"></div>
+</header>
+<main id="view">{{SVG}}</main>
+<footer>Drag to pan · scroll to zoom · click a pad or track to highlight its net · Esc clears · drawn by bb, not KiCad: text is approximate, and zones show filled only with --routed</footer>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ff4fd8"/></marker>
+    <pattern id="hatch-f" width="1" height="1" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="1" stroke="#c94a4a" stroke-width=".12" opacity=".5"/></pattern>
+    <pattern id="hatch-b" width="1" height="1" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <line x1="0" y1="0" x2="0" y2="1" stroke="#4a7ccf" stroke-width=".12" opacity=".45"/></pattern>
+  </defs>
+</svg>
+<script>
+(() => {
+  const LIVE = {{LIVE}};
+  const view = document.getElementById("view");
+  const layers = [
+    ["cu-f", "F.Cu", "--cu-f"], ["cu-b", "B.Cu", "--cu-b"], ["pad", "Pads", "--tht"], ["via", "Vias", "--via"],
+    ["zone-f", "F zones", "--cu-f"], ["zone-b", "B zones", "--cu-b"], ["silk-f", "F.Silk", "--silk"],
+    ["silk-b", "B.Silk", "--silk-b"], ["art", "Artwork", "--silk"], ["fab", "Fab", "--fab"],
+    ["rats", "Ratsnest", "--rats"], ["changes", "Changes", "--moved"],
+  ];
+  const hidden = new Set(JSON.parse(localStorage.getItem("bb-hidden") || '["fab","silk-b"]'));
+  const box = document.getElementById("layers");
+  for (const [key, name, color] of layers) {
+    const label = document.createElement("label");
+    label.innerHTML = `<input type="checkbox" ${hidden.has(key) ? "" : "checked"}><i style="background:var(${color})"></i>${name}`;
+    label.querySelector("input").addEventListener("change", (e) => {
+      e.target.checked ? hidden.delete(key) : hidden.add(key);
+      try { localStorage.setItem("bb-hidden", JSON.stringify([...hidden])); } catch {}
+      applyHidden();
+    });
+    box.appendChild(label);
+  }
+  function applyHidden() {
+    document.getElementById("hidden").textContent = [...hidden]
+      .map((k) => (k === "changes" ? ".changes" : `.k-${k}`) + "{display:none}").join("");
+  }
+  applyHidden();
+
+  let svg = view.querySelector("svg");
+  let viewBox = null;  // the user's pan/zoom, kept across rebuilds
+  let net = null;
+  const vb = () => svg.getAttribute("viewBox").split(" ").map(Number);
+  const setVb = (v) => { svg.setAttribute("viewBox", v.join(" ")); viewBox = v; };
+
+  function bind() {
+    let drag = null;
+    svg.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const [x, y, w, h] = vb();
+      const r = svg.getBoundingClientRect();
+      const s = Math.min(r.width / w, r.height / h);
+      const px = x + (e.clientX - r.left - (r.width - w * s) / 2) / s;
+      const py = y + (e.clientY - r.top - (r.height - h * s) / 2) / s;
+      const k = Math.exp(e.deltaY * 0.0015);
+      setVb([px - (px - x) * k, py - (py - y) * k, w * k, h * k]);
+    }, { passive: false });
+    svg.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, v: vb(), moved: false }; });
+    svg.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const [x, y, w, h] = drag.v;
+      const r = svg.getBoundingClientRect();
+      const s = Math.min(r.width / w, r.height / h);
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; svg.classList.add("dragging"); }
+      if (drag.moved) setVb([x - dx / s, y - dy / s, w, h]);
+    });
+    const end = (e) => {
+      if (drag && !drag.moved) {
+        const hit = e.target.closest("[data-net]");
+        highlight(hit ? hit.dataset.net : null);
+      }
+      drag = null; svg.classList.remove("dragging");
+    };
+    svg.addEventListener("pointerup", end);
+    svg.addEventListener("pointerleave", () => { drag = null; svg.classList.remove("dragging"); });
+  }
+
+  function highlight(name) {
+    net = name;
+    svg.classList.toggle("highlight", !!name);
+    svg.querySelectorAll(".hl").forEach((el) => el.classList.remove("hl"));
+    if (name) svg.querySelectorAll("[data-net]").forEach((el) => { if (el.dataset.net === name) el.classList.add("hl"); });
+    document.getElementById("net").textContent = name ? `net ${name}` : "";
+  }
+
+  document.getElementById("fit").addEventListener("click", () => { setVb(svg.dataset.home.split(" ").map(Number)); viewBox = null; });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") highlight(null);
+    if (e.key === "f" || e.key === "F") document.getElementById("fit").click();
+  });
+  bind();
+
+  if (!LIVE) return;
+  let version = null;
+  async function poll() {
+    try {
+      const state = await (await fetch("/state", { cache: "no-store" })).json();
+      document.getElementById("status").textContent = state.status;
+      document.getElementById("changes").textContent = state.changes || "";
+      const error = document.getElementById("error");
+      error.textContent = state.error || "";
+      error.classList.toggle("show", !!state.error);
+      if (state.version !== version) {
+        const first = version === null;
+        version = state.version;
+        if (!first || !svg) {
+          const text = await (await fetch("/svg", { cache: "no-store" })).text();
+          view.innerHTML = text;
+          svg = view.querySelector("svg");
+          if (viewBox) setVb(viewBox);
+          bind();
+          highlight(net);
+        }
+      }
+    } catch (e) {
+      document.getElementById("status").textContent = "bb preview is not running";
+    }
+    setTimeout(poll, 400);
+  }
+  poll();
+})();
+</script>
+</body>
+</html>
