@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "sdk"]
+members = [".", "sdk", "sdk/bindgen"]
 # Board crates build for wasm32-wasip2 on their own.
 exclude = ["examples", "tests/fixtures"]
 

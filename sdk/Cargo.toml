@@ -5,4 +5,5 @@ edition = "2024"
 description = "Describe a KiCad board in Rust and build it as a WebAssembly component for bb"
 
 [dependencies]
-wit-bindgen = "0.51"
+# No `macros`: the bindings are pre-generated into src/bindings.rs (see build.rs).
+wit-bindgen = { version = "=0.51.0", default-features = false, features = ["std", "realloc"] }

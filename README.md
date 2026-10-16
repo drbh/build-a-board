@@ -241,6 +241,24 @@ such as the AP64352 and the SimpleFOC Mini carrier), `power.rs` and
 `control.rs` (blocks), `routes.rs` (fixed routes between blocks, written
 through the blocks' handles), and `lib.rs` (the board, plus design tests).
 
+### Changing the WIT contract
+
+The SDK's bindings for [`wit/board.wit`](wit/board.wit) are generated ahead
+of time into `sdk/src/bindings.rs`, so board crates compile without
+procedural macros (a cold board build takes about a second, and the SDK
+can compile with an in-browser compiler). After editing anything in `wit/`,
+regenerate them:
+
+```sh
+cargo run -p bb-sdk-bindgen
+```
+
+Forgetting is not silent: the generated file records a hash of `wit/`, and
+the SDK's build script refuses to build when the hash no longer matches, so
+every board build fails with that command until the bindings are
+regenerated. `cargo test -p bb-sdk-bindgen` also compares the committed file
+with a fresh generation.
+
 ### The sandbox
 
 The component runs in Wasmtime with no filesystem, network, or environment

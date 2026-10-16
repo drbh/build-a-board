@@ -1,0 +1,12 @@
+[package]
+name = "bb-sdk-bindgen"
+version = "0.1.0"
+edition = "2024"
+description = "Generates bb-sdk's WIT bindings (sdk/src/bindings.rs) from wit/"
+publish = false
+
+[dependencies]
+anyhow = "1"
+# The same generator `wit_bindgen::generate!` runs, pinned to the SDK's wit-bindgen.
+wit-bindgen-core = "=0.51.0"
+wit-bindgen-rust = "=0.51.0"
