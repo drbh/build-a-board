@@ -30,6 +30,9 @@
 .drawing .chg-added-box { stroke: var(--added); fill: none; stroke-width: .25; }
 .drawing .chg-edited-box { stroke: var(--moved); fill: none; stroke-width: .2; stroke-dasharray: .3 .2; }
 .drawing .chg-removed-box { stroke: var(--removed); fill: none; stroke-width: .2; stroke-dasharray: .6 .4; }
+.drawing .finding { fill: none; stroke-width: .3; }
+.drawing .finding.error { stroke: var(--removed); fill: var(--removed); fill-opacity: .12; }
+.drawing .finding.warning { stroke: var(--edge); stroke-dasharray: .5 .3; }
 .drawing [data-net] { cursor: pointer; }
 .drawing svg.highlight [data-net] { opacity: .25; }
 .drawing svg.highlight .hl { opacity: 1 !important; filter: drop-shadow(0 0 .5px #fff); }
@@ -37,4 +40,4 @@
 /* Hidden layers (see layers.ts). */
 .hide-cu-f .k-cu-f, .hide-cu-b .k-cu-b, .hide-pad .k-pad, .hide-via .k-via,
 .hide-zone-f .k-zone-f, .hide-zone-b .k-zone-b, .hide-silk-f .k-silk-f,
-.hide-fab .k-fab, .hide-rats .k-rats, .hide-changes .changes { display: none; }
+.hide-fab .k-fab, .hide-rats .k-rats, .hide-changes .changes, .hide-findings .findings { display: none; }

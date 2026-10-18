@@ -53,8 +53,17 @@ struct Drawing {
     changes: Option<String>,
     status: String,
     warnings: Vec<String>,
+    /// What the placement checks found: copper off the board or too near its
+    /// edge, overlapping courtyards.
+    findings: Vec<Finding>,
     parts: usize,
     unrouted: usize,
+}
+
+#[derive(Serialize)]
+struct Finding {
+    severity: &'static str,
+    message: String,
 }
 
 /// Library footprints a design places, as `Library:Name`.
@@ -134,6 +143,11 @@ impl Renderer {
             changes,
             status: svg::status_line(&scene, &svg::Status::default()),
             warnings: resolved.warnings,
+            findings: scene
+                .findings
+                .iter()
+                .map(|f| Finding { severity: f.severity.name(), message: f.message.clone() })
+                .collect(),
             parts: scene.footprints.len(),
             unrouted: scene.ratsnest.len(),
         };

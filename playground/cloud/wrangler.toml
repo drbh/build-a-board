@@ -1,0 +1,18 @@
+# Hosted playground and book at bb.dholtz.com. Everything Cloudflare-specific
+# lives in this folder. `stage.sh` assembles `site/` (the playground, the book,
+# KiCad's footprints) and `r2/` (the compiler files over the 25 MiB
+# static-asset limit); `deploy.sh` uploads the R2 files and deploys.
+name = "bb-playground"
+main = "worker/index.js"
+compatibility_date = "2026-09-01"
+account_id = "1d9f1ba803a2b9c6118173364bde3155"
+routes = [{ pattern = "bb.dholtz.com", custom_domain = true }]
+
+[assets]
+directory = "site"
+binding = "ASSETS"
+not_found_handling = "none"
+
+[[r2_buckets]]
+binding = "COMPILER"
+bucket_name = "bb-playground-compiler"

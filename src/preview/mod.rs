@@ -49,10 +49,18 @@ pub fn write(board: &BoardFile, footprints: &Path, kicad_pcb: &Path, options: &O
     std::fs::create_dir_all(path.parent().expect("output dir"))?;
     std::fs::write(&path, page)?;
     println!("Preview: {} ({} footprints, {} unrouted)", path.display(), scene.footprints.len(), scene.ratsnest.len());
+    report(&scene);
     if options.open {
         open(&path.display().to_string());
     }
     Ok(path)
+}
+
+/// Print what the placement checks found.
+pub fn report(scene: &Scene) {
+    for finding in &scene.findings {
+        eprintln!("{}: {}", finding.severity.name(), finding.message);
+    }
 }
 
 /// Open a file or URL with the desktop's default handler.

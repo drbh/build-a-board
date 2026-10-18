@@ -1,3 +1,15 @@
 /target
 /output/
 playground/core-wasm/target/
+.env
+
+# Local development artifacts
+*.log
+*.kicad_prl
+.env.*
+!.env.example
+!.env.sample
+.DS_Store
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

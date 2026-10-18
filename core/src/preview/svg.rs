@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::time::Duration;
 
+use super::check::Severity;
 use super::{Footprint, Item, Kind, P, PadShape, Scene, Shape, Side};
 
 /// Drawing order, bottom to top.
@@ -220,19 +221,12 @@ fn outlines(scene: &Scene) -> Vec<Vec<P>> {
     loops
 }
 
+/// The board, and anything placed off it, so that a part off the board is
+/// still in view.
 fn view_box(scene: &Scene) -> (P, P) {
-    let mut lo = (f64::INFINITY, f64::INFINITY);
-    let mut hi = (f64::NEG_INFINITY, f64::NEG_INFINITY);
-    for p in outlines(scene).iter().flatten() {
-        lo = (lo.0.min(p.0), lo.1.min(p.1));
-        hi = (hi.0.max(p.0), hi.1.max(p.1));
-    }
-    if !lo.0.is_finite() {
-        for fp in &scene.footprints {
-            lo = (lo.0.min(fp.at.0 - 5.0), lo.1.min(fp.at.1 - 5.0));
-            hi = (hi.0.max(fp.at.0 + 5.0), hi.1.max(fp.at.1 + 5.0));
-        }
-    }
+    let outline = outlines(scene).into_iter().flatten().map(|p| (p, p));
+    let marks = scene.findings.iter().flat_map(|f| f.marks.iter().copied());
+    let (lo, hi) = union(outline.chain(scene.footprints.iter().map(board_bounds)).chain(marks));
     if !lo.0.is_finite() {
         return ((0.0, 0.0), (10.0, 10.0));
     }
@@ -509,6 +503,13 @@ pub fn svg(scene: &Scene, previous: Option<&Scene>) -> (String, Option<String>) 
             esc(net)
         );
     }
+    out.push_str(r#"<g class="findings">"#);
+    for finding in &scene.findings {
+        for mark in &finding.marks {
+            rect(&mut out, *mark, &format!("finding {}", finding.severity.name()), &finding.message);
+        }
+    }
+    out.push_str("</g>");
     let _ = write!(out, r#"<g class="changes">{over}</g>"#);
     out.push_str("</svg>");
     (out, summary)
@@ -531,7 +532,15 @@ pub fn page_with(scene: &Scene, svg: &str, status: &Status, live: bool) -> Strin
 /// The status line for a scene.
 pub fn status_line(scene: &Scene, status: &Status) -> String {
     let copper = if scene.routed { "routed copper" } else { "design copper" };
-    format!("{} · {} parts · {} unrouted · {copper}", status.message, scene.footprints.len(), scene.ratsnest.len())
+    let mut line =
+        format!("{} · {} parts · {} unrouted · {copper}", status.message, scene.footprints.len(), scene.ratsnest.len());
+    for severity in [Severity::Error, Severity::Warning] {
+        let n = scene.findings.iter().filter(|f| f.severity == severity).count();
+        if n > 0 {
+            let _ = write!(line, " · {n} {}{}", severity.name(), if n == 1 { "" } else { "s" });
+        }
+    }
+    line
 }
 
 const PAGE: &str = include_str!("page.html");
@@ -549,6 +558,7 @@ mod tests {
             angle: 0.0,
             items: Vec::new(),
             bounds: ((-1.0, -0.5), (1.0, 0.5)),
+            courtyard: Vec::new(),
         };
         Scene {
             footprints: vec![part("R1", 0.0), part("R2", 5.0)],

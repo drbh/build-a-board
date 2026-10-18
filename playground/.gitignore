@@ -2,3 +2,6 @@
 dist/
 node_modules/
 core-wasm/target/
+cloud/site/
+cloud/r2/
+cloud/.wrangler/

@@ -7,6 +7,7 @@
 //! It is a viewing aid, not an output: zone fills, KiCad's stroke font, and
 //! exact reference placement are approximated.
 
+pub mod check;
 mod ratsnest;
 pub mod svg;
 
@@ -151,6 +152,16 @@ pub struct Footprint {
     pub items: Vec<Item>,
     /// Footprint-local bounding box, for change highlights.
     pub bounds: (P, P),
+    /// Footprint-local courtyard outlines (not drawn), for overlap checks.
+    pub courtyard: Vec<(Side, Shape)>,
+}
+
+impl Footprint {
+    /// A footprint-local point in the board frame.
+    pub fn place(&self, (x, y): P) -> P {
+        let (s, c) = (-self.angle).to_radians().sin_cos();
+        (self.at.0 + x * c - y * s, self.at.1 + x * s + y * c)
+    }
 }
 
 /// Everything the preview draws.
@@ -163,6 +174,8 @@ pub struct Scene {
     pub ratsnest: Vec<(String, P, P)>,
     /// Whether tracks came from the routed KiCad board rather than the design.
     pub routed: bool,
+    /// What the placement checks found (see [`check`]).
+    pub findings: Vec<check::Finding>,
 }
 
 impl Scene {
@@ -252,6 +265,7 @@ impl Scene {
             design.zones.iter().map(|z| (z.layer, z.net.clone(), z.outline.iter().map(|p| mm(*p)).collect())).collect()
         };
         scene.ratsnest = ratsnest::unrouted(&pads, &copper.tracks, &copper.vias, &zones);
+        scene.findings = check::check(&scene, &design.rule_severities);
         Ok(scene)
     }
 
@@ -378,6 +392,7 @@ fn graphic_item(graphic: &Graphic, place: impl Fn(P) -> P) -> Option<Item> {
 fn footprint(fp: &design::Footprint, libraries: &dyn FootprintSource) -> Result<(Footprint, Vec<PlacedPad>)> {
     let at = mm(fp.at);
     let mut items = Vec::new();
+    let mut courtyard = Vec::new();
     let mut pads = Vec::new();
     let mut place_pad = |number: &str, local: P, angle: f64, size: P, circle: bool, side: Side, net: Option<&str>| {
         if let Some(net) = net {
@@ -454,8 +469,10 @@ fn footprint(fp: &design::Footprint, libraries: &dyn FootprintSource) -> Result<
                 place_pad(number, local, angle, size, pad_shape == PadShape::Circle, side, net);
             }
             for child in node.args() {
-                if let Some(item) = library_graphic(child) {
-                    items.push(item);
+                match library_shape(child) {
+                    Some(("F.CrtYd" | "F.Courtyard", shape)) => courtyard.push((Side::Front, shape)),
+                    Some(("B.CrtYd" | "B.Courtyard", shape)) => courtyard.push((Side::Back, shape)),
+                    _ => items.extend(library_graphic(child)),
                 }
             }
             if !fp.hide_reference
@@ -515,6 +532,9 @@ fn footprint(fp: &design::Footprint, libraries: &dyn FootprintSource) -> Result<
                 if let Some(item) = graphic_item(graphic, |p| p) {
                     items.push(item);
                 }
+                if let Some(c) = generated_courtyard(graphic) {
+                    courtyard.push(c);
+                }
             }
             if !fp.hide_reference {
                 items.push(Item::new(
@@ -531,8 +551,15 @@ fn footprint(fp: &design::Footprint, libraries: &dyn FootprintSource) -> Result<
         }
     }
     let bounds = bounds(&items);
-    let footprint =
-        Footprint { reference: fp.reference.clone(), value: fp.value.clone(), at, angle: fp.angle, items, bounds };
+    let footprint = Footprint {
+        reference: fp.reference.clone(),
+        value: fp.value.clone(),
+        at,
+        angle: fp.angle,
+        items,
+        bounds,
+        courtyard,
+    };
     Ok((footprint, pads))
 }
 
@@ -541,14 +568,38 @@ fn readable(footprint_angle: f64) -> f64 {
     -footprint_angle
 }
 
+/// A generated footprint's courtyard graphic, footprint-local.
+fn generated_courtyard(graphic: &Graphic) -> Option<(Side, Shape)> {
+    let (Graphic::Line { layer, .. } | Graphic::Poly { layer, .. }) = graphic;
+    let side = match layer {
+        Layer::FCourtyard => Side::Front,
+        Layer::BCourtyard => Side::Back,
+        _ => return None,
+    };
+    let shape = match graphic {
+        Graphic::Line { start, end, width, .. } => Shape::Line { a: mm(*start), b: mm(*end), width: width.to_mm() },
+        Graphic::Poly { points, .. } => {
+            Shape::Poly { points: points.iter().map(|p| mm(*p)).collect(), fill: false, width: 0.0 }
+        }
+    };
+    Some((side, shape))
+}
+
 /// Silkscreen and fab graphics from a library footprint.
 fn library_graphic(node: &Sexp) -> Option<Item> {
-    let kind = match node.value("layer")? {
+    let (layer, shape) = library_shape(node)?;
+    let kind = match layer {
         "F.SilkS" | "F.Silkscreen" => Kind::Silk,
         "B.SilkS" | "B.Silkscreen" => Kind::SilkBack,
         "F.Fab" => Kind::Fab,
         _ => return None,
     };
+    Some(Item::new(kind, shape))
+}
+
+/// A library footprint's graphic and the layer it is on.
+fn library_shape(node: &Sexp) -> Option<(&str, Shape)> {
+    let layer = node.value("layer")?;
     let width = node.child("stroke").and_then(|s| num(s, "width")).or_else(|| num(node, "width")).unwrap_or(0.12);
     let fill =
         node.child("fill").and_then(|f| f.arg(0)).and_then(Sexp::text).is_some_and(|f| f == "yes" || f == "solid");
@@ -574,7 +625,7 @@ fn library_graphic(node: &Sexp) -> Option<Item> {
         }
         _ => return None,
     };
-    Some(Item::new(kind, shape))
+    Some((layer, shape))
 }
 
 /// The local bounding box of a footprint's pads and graphics.

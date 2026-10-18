@@ -144,14 +144,20 @@ export class Session {
         this.svg = drawing.svg;
         this.changes = drawing.changes ?? "";
         for (const w of drawing.warnings) problems.push({ level: "warning", message: w, rendered: `warning: ${w}` });
-        const text = `${plural(drawing.parts, "part")} · ${drawing.unrouted} unrouted · ${ms(elapsed())}`;
-        outcome = { kind: "ok", text, drawing };
+        for (const { severity, message } of drawing.findings) {
+          problems.push({ level: severity, message, rendered: `${severity}: ${message}` });
+        }
+        // The drawing is current either way; failed checks only turn the status red.
+        const errors = drawing.findings.filter((f) => f.severity === "error").length;
+        const checks = errors ? ` · ${plural(errors, "placement error")}` : "";
+        const text = `${plural(drawing.parts, "part")} · ${drawing.unrouted} unrouted${checks} · ${ms(elapsed())}`;
+        outcome = { kind: errors ? "bad" : "ok", text, drawing };
       } catch (e: any) {
         problems.push(failure(String(e?.message ?? e)));
         outcome = { kind: "bad", text: "design problems" };
       }
     }
-    this.stale = outcome.kind !== "ok" && this.svg !== null;
+    this.stale = !outcome.drawing && this.svg !== null;
     this.status = { kind: outcome.kind, text: outcome.text };
     this.problems = problems;
     return { ...outcome, problems, wallMs: elapsed(), compileMs: result.compileMs };

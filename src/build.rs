@@ -18,7 +18,10 @@ use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use bb_core::preview::check::Severity;
+
 use crate::commands::{self, Ctx};
+use crate::kicad::Libraries;
 use crate::process::Cmd;
 use crate::release::archive::copy_with_times;
 use crate::release::lock::sha256;
@@ -109,6 +112,19 @@ pub fn build(ctx: &Ctx, options: Options) -> Result<()> {
             "{} is committed but has no build record, so bb can't tell whether it is current. \
              Rebuilding would replace its routing; run with --force to rebuild it from the board file.",
             ctx.pcb.display()
+        );
+    }
+
+    // 0. Check the placement first: copper off the board, or overlapping
+    // parts, would otherwise only show up in DRC, after routing.
+    let scene = crate::preview::scene(&ctx.board, &Libraries::new(&ctx.tools.footprints), None)?;
+    crate::preview::report(&scene);
+    let errors = scene.findings.iter().filter(|f| f.severity == Severity::Error).count();
+    if errors > 0 {
+        anyhow::bail!(
+            "the placement has {errors} error{} (above); fix {}, or change the rule's severity with `.severities(...)`",
+            if errors == 1 { "" } else { "s" },
+            if errors == 1 { "it" } else { "them" }
         );
     }
 

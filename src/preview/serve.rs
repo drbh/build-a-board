@@ -90,6 +90,7 @@ pub fn watch(path: &Path, footprints: &Path, options: &WatchOptions) -> Result<(
                     }
                     let status_line = svg::status_line(&scene, &status);
                     println!("{status_line}{}", changes.as_deref().map(|c| format!(" · {c}")).unwrap_or_default());
+                    super::report(&scene);
                     let mut state = shared.lock().expect("preview state");
                     state.version += 1;
                     state.page = svg::page_with(&scene, &svg, &status, true);

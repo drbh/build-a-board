@@ -6,6 +6,9 @@ export interface Drawing {
   changes: string | null;
   status: string;
   warnings: string[];
+  /// What the placement checks found: copper off the board or too near its
+  /// edge, overlapping courtyards.
+  findings: { severity: "error" | "warning"; message: string }[];
   parts: number;
   unrouted: number;
 }

@@ -3,13 +3,31 @@
   import { onMount } from "svelte";
   import { EditorView, basicSetup } from "codemirror";
   import { keymap } from "@codemirror/view";
+  import { Prec } from "@codemirror/state";
   import { indentWithTab } from "@codemirror/commands";
   import { rust } from "@codemirror/lang-rust";
   import { oneDark } from "@codemirror/theme-one-dark";
   import { type Diagnostic, lintGutter, setDiagnostics } from "@codemirror/lint";
+  import type { LineDiff } from "../lib/diff";
+  import { diffMarks, setDiff } from "../lib/diff-marks";
   import type { Problem } from "../lib/protocol";
 
-  let { problems = [], onedit }: { problems?: Problem[]; onedit?: () => void } = $props();
+  let {
+    problems = [],
+    onedit,
+    onrun,
+  }: { problems?: Problem[]; onedit?: () => void; onrun?: () => void } = $props();
+
+  /// one-dark's syntax colors on the page's own panels.
+  const panels = EditorView.theme(
+    {
+      "&": { backgroundColor: "var(--workspace-bg)" },
+      ".cm-gutters": { backgroundColor: "var(--workspace-bg)", borderRight: "1px solid var(--line-light)" },
+      ".cm-activeLine": { backgroundColor: "#ffffff08" },
+      ".cm-activeLineGutter": { backgroundColor: "#ffffff08" },
+    },
+    { dark: true },
+  );
 
   let parent: HTMLDivElement;
   let view: EditorView | undefined = $state();
@@ -21,10 +39,21 @@
       parent,
       extensions: [
         basicSetup,
-        keymap.of([indentWithTab]),
+        keymap.of([
+          indentWithTab,
+          {
+            key: "Mod-Enter",
+            run: () => {
+              onrun?.();
+              return true;
+            },
+          },
+        ]),
         rust(),
         oneDark,
+        Prec.highest(panels),
         lintGutter(),
+        diffMarks,
         EditorView.updateListener.of((u) => {
           if (u.docChanged && !loading) onedit?.();
         }),
@@ -56,10 +85,20 @@
     return view?.state.doc.toString() ?? "";
   }
 
-  export function load(source: string) {
+  /// Replace the whole text. With a diff, mark what it changed and scroll the
+  /// first change into view; without one, clear any marks.
+  export function load(source: string, diff: LineDiff | null = null) {
     loading = true;
     view!.dispatch({ changes: { from: 0, to: view!.state.doc.length, insert: source } });
+    view!.dispatch({ effects: setDiff.of(diff) });
     loading = false;
+    const first = diff && Math.min(...diff.added, ...diff.removed.filter((n) => n <= view!.state.doc.lines));
+    if (first && Number.isFinite(first)) {
+      const line = view!.state.doc.line(first);
+      view!.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: "center" }) });
+    } else {
+      view!.dispatch({ effects: EditorView.scrollIntoView(0) });
+    }
   }
 
   /// Replace a range, as if typed.
@@ -77,14 +116,17 @@
 
 <style>
   .editor {
+    flex: 1;
     min-height: 0;
     overflow: hidden;
-    border-right: 1px solid var(--line);
   }
   .editor :global(.cm-editor) {
     height: 100%;
   }
+  .editor :global(.cm-focused) {
+    outline: none;
+  }
   .editor :global(.cm-scroller) {
-    font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    font: 12.5px/1.5 var(--mono);
   }
 </style>

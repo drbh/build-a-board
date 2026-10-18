@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "svelte-check && vite build",
     "preview": "vite preview",
-    "check": "svelte-check"
+    "check": "svelte-check",
+    "book": "node tools/book.mjs"
   },
   "dependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",
@@ -24,9 +25,11 @@
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@tsconfig/svelte": "5.0.8",
     "@types/node": "25.9.8",
+    "marked": "18.0.14",
     "svelte": "5.57.1",
     "svelte-check": "4.7.6",
     "typescript": "5.9.3",
-    "vite": "8.3.1"
+    "vite": "8.3.1",
+    "wrangler": "4.151.1"
   }
 }

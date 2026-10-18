@@ -61,6 +61,12 @@
   .chg-added-box { stroke: var(--added); fill: none; stroke-width: .25; }
   .chg-edited-box { stroke: var(--moved); fill: none; stroke-width: .2; stroke-dasharray: .3 .2; }
   .chg-removed-box { stroke: var(--removed); fill: none; stroke-width: .2; stroke-dasharray: .6 .4; }
+  .finding { fill: none; stroke-width: .3; }
+  .finding.error { stroke: var(--removed); fill: var(--removed); fill-opacity: .12; }
+  .finding.warning { stroke: var(--edge); stroke-dasharray: .5 .3; }
+  #findings { width: 100%; margin: 0; padding: 0; list-style: none; font-size: 12px; }
+  #findings:empty { display: none; }
+  #findings .error { color: var(--removed); } #findings .warning { color: var(--edge); }
   [data-net] { cursor: pointer; }
   svg.highlight [data-net] { opacity: .25; }
   svg.highlight .hl { opacity: 1 !important; filter: drop-shadow(0 0 .5px #fff); }
@@ -77,6 +83,7 @@
   <button id="fit" title="Fit the board (F)">Fit</button>
   <span id="net"></span>
   <div id="error"></div>
+  <ul id="findings"></ul>
 </header>
 <main id="view">{{SVG}}</main>
 <footer>Drag to pan · scroll to zoom · click a pad or track to highlight its net · Esc clears · drawn by bb, not KiCad: text is approximate, and zones show filled only with --routed</footer>
@@ -98,7 +105,7 @@
     ["cu-f", "F.Cu", "--cu-f"], ["cu-b", "B.Cu", "--cu-b"], ["pad", "Pads", "--tht"], ["via", "Vias", "--via"],
     ["zone-f", "F zones", "--cu-f"], ["zone-b", "B zones", "--cu-b"], ["silk-f", "F.Silk", "--silk"],
     ["silk-b", "B.Silk", "--silk-b"], ["art", "Artwork", "--silk"], ["fab", "Fab", "--fab"],
-    ["rats", "Ratsnest", "--rats"], ["changes", "Changes", "--moved"],
+    ["rats", "Ratsnest", "--rats"], ["changes", "Changes", "--moved"], ["findings", "Checks", "--removed"],
   ];
   const hidden = new Set(JSON.parse(localStorage.getItem("bb-hidden") || '["fab","silk-b"]'));
   const box = document.getElementById("layers");
@@ -114,7 +121,7 @@
   }
   function applyHidden() {
     document.getElementById("hidden").textContent = [...hidden]
-      .map((k) => (k === "changes" ? ".changes" : `.k-${k}`) + "{display:none}").join("");
+      .map((k) => (k === "changes" || k === "findings" ? `.${k}` : `.k-${k}`) + "{display:none}").join("");
   }
   applyHidden();
 
@@ -123,6 +130,22 @@
   let net = null;
   const vb = () => svg.getAttribute("viewBox").split(" ").map(Number);
   const setVb = (v) => { svg.setAttribute("viewBox", v.join(" ")); viewBox = v; };
+
+  /// List what the placement checks found, read from the drawing's marks.
+  function listFindings() {
+    const seen = new Map();
+    for (const mark of svg?.querySelectorAll(".finding") ?? []) {
+      const message = mark.querySelector("title")?.textContent ?? "";
+      if (!seen.has(message)) seen.set(message, mark.classList.contains("error") ? "error" : "warning");
+    }
+    document.getElementById("findings").replaceChildren(...[...seen].map(([message, severity]) => {
+      const li = document.createElement("li");
+      li.className = severity;
+      li.textContent = `${severity}: ${message}`;
+      return li;
+    }));
+  }
+  listFindings();
 
   function bind() {
     let drag = null;
@@ -192,6 +215,7 @@
           if (viewBox) setVb(viewBox);
           bind();
           highlight(net);
+          listFindings();
         }
       }
     } catch (e) {

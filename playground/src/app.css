@@ -1,13 +1,75 @@
-/* The page's colors and the base layout. */
+/* The page's colors and the base controls, shared in spirit with the
+   kernel-port playground: neutral near-black panels, one accent, monospace
+   chrome. The board's own colors (KiCad's, roughly) are a separate group. */
 :root {
-  --bg: #0d1014; --panel: #161b22; --ink: #d6dde6; --muted: #8b96a5; --line: #263040;
-  --ok: #3fe07a; --bad: #ff5a5a; --warn: #e6c14a;
+  --app-bg: #0b0b0b;
+  --workspace-bg: #090909;
+  --panel: #151515;
+  --panel-2: #1d1d1d;
+  --toolbar: #191919;
+  --line: #3a3a3a;
+  --line-light: #262626;
+  --ink: #e8e7e2;
+  --muted: #9d9b95;
+  --faint: #6f6d68;
+  --control: #171717;
+  --control-hover: #252525;
+  --accent: #62a9d1;
+  --ok: #69b780;
+  --warn: #d6b26e;
+  --bad: #cf6545;
+  --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+
+  /* The drawing. */
   --board: #0f2a1c; --edge: #e6d34a; --cu-f: #c94a4a; --cu-b: #4a7ccf; --pad-f: #e0675f;
   --pad-b: #6c95e0; --tht: #d1ad45; --via: #b8bec7; --silk: #ece7c9; --silk-b: #b9a6f0;
   --fab: #6e7682; --rats: #f4f4f4; --added: #3fe07a; --moved: #ff4fd8; --removed: #ff5a5a;
+
+  color: var(--ink);
+  background: var(--app-bg);
+  font: 13px/1.45 var(--mono);
+  color-scheme: dark;
 }
+
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
-  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-#app { height: 100%; display: flex; flex-direction: column; }
-select, button { color: var(--ink); font: inherit; }
+html, body, #app { height: 100%; margin: 0; }
+
+button, select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--control);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+button:hover:not(:disabled), select:hover { background: var(--control-hover); }
+button:disabled { opacity: 0.45; cursor: default; }
+select:focus, button:focus-visible { outline: none; border-color: var(--accent); }
+
+a { color: var(--muted); text-decoration: none; }
+a:hover { color: var(--ink); }
+
+/* A pane's header: a small uppercase label, then the pane's own controls. */
+.pane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 10px;
+  background: var(--toolbar);
+  border-bottom: 1px solid var(--line-light);
+}
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.spacer { flex: 1; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #2f2f2f; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #3d3d3d; }
+::-webkit-scrollbar-track { background: transparent; }
