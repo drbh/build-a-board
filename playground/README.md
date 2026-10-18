@@ -11,7 +11,7 @@ npm run dev        # http://127.0.0.1:7820/
 
 `./build.sh` does all of it and writes a static build to `dist/`; `npm run preview` serves that.
 
-it needs Node, `zstd`, `wasm-pack` (with the `wasm32-unknown-unknown` target), and Cargo. the dev and preview servers also serve KiCad's footprints under `/footprints/`, found in the usual places or `KICAD_FOOTPRINT_DIR`; a static host has to do the same. Chrome and Firefox work; Safari is not a target.
+it needs Node 24 or newer, `zstd`, `wasm-pack` (with the `wasm32-unknown-unknown` target), and Cargo. Node 22 can crash while running the WebAssembly compiler used to prebuild the SDK. the dev and preview servers also serve KiCad's footprints under `/footprints/`, found in the usual places or `KICAD_FOOTPRINT_DIR`; a static host has to do the same. Chrome and Firefox work; Safari is not a target.
 
 the address bar is the share link: it names the example, and once you edit it carries the source too, deflated into `?src=`. **share** copies it. ⌘⏎ rebuilds right away; drag the bar between the panes to resize them.
 

@@ -8,6 +8,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WASI } from "node:wasi";
 
+// Node 22 can segfault while this WASI compiler builds wit-bindgen.
+if (Number(process.versions.node.split(".")[0]) < 24) {
+  console.error(`The browser compiler requires Node.js 24 or newer; found ${process.version}.`);
+  process.exit(2);
+}
+
 const [, , rustcPath, sysroot, work, separator, ...args] = process.argv;
 if (separator !== "--") {
   console.error("usage: node rustc.mjs <rustc.wasm> <sysroot> <work> -- <rustc args...>");
